@@ -1,0 +1,110 @@
+<?php
+
+namespace Knowledge\Infrastructure;
+
+class CptRegistrar {
+
+	public function init(): void {
+		add_action( 'init', [ $this, 'register_post_types' ] );
+		add_action( 'init', [ $this, 'register_taxonomies' ] );
+	}
+
+	public function register_post_types(): void {
+		$this->register_article();
+		$this->register_version();
+		$this->register_fork();
+		$this->register_project();
+	}
+
+	public function register_taxonomies(): void {
+		$this->register_category();
+		$this->register_tag();
+	}
+
+	private function register_article(): void {
+		register_post_type( 'kb_article', [
+			'labels'       => [
+				'name'          => 'Articles',
+				'singular_name' => 'Article',
+				'add_new'       => 'Add New',
+				'add_new_item'  => 'Add New Article',
+				'edit_item'     => 'Edit Article',
+			],
+			'public'       => true,
+			'has_archive'  => true,
+			'menu_icon'    => 'dashicons-book',
+			'supports'     => [ 'title', 'author', 'revisions' ],
+			'show_in_rest' => true,
+			'rewrite'      => [ 'slug' => 'kb' ],
+		] );
+	}
+
+	private function register_version(): void {
+		register_post_type( 'kb_version', [
+			'labels'       => [
+				'name'          => 'Versions',
+				'singular_name' => 'Version',
+			],
+			'public'       => false, // Internal use mostly
+			'show_ui'      => true,
+			'show_in_menu' => 'edit.php?post_type=kb_article', // Submenu of Articles
+			'supports'     => [ 'title', 'author' ],
+			'capabilities' => [
+				'create_posts' => 'do_not_allow', // Immutable via UI
+			],
+			'map_meta_cap' => true,
+		] );
+	}
+
+	private function register_fork(): void {
+		register_post_type( 'kb_fork', [
+			'labels'       => [
+				'name'          => 'Forks',
+				'singular_name' => 'Fork',
+			],
+			'public'       => true,
+			'show_ui'      => true,
+			'show_in_menu' => 'edit.php?post_type=kb_article',
+			'supports'     => [ 'title', 'editor', 'author' ],
+		] );
+	}
+
+	private function register_project(): void {
+		register_post_type( 'kb_project', [
+			'labels'       => [
+				'name'          => 'Projects',
+				'singular_name' => 'Project',
+			],
+			'public'       => true,
+			'show_ui'      => true,
+			'menu_icon'    => 'dashicons-portfolio',
+			'supports'     => [ 'title', 'editor', 'author' ],
+		] );
+	}
+
+	private function register_category(): void {
+		register_taxonomy( 'kb_category', [ 'kb_article' ], [
+			'labels'            => [
+				'name'          => 'Knowledge Categories',
+				'singular_name' => 'Category',
+			],
+			'hierarchical'      => true,
+			'show_ui'           => true,
+			'show_admin_column' => true,
+			'show_in_rest'      => true,
+		] );
+	}
+
+	private function register_tag(): void {
+		register_taxonomy( 'kb_tag', [ 'kb_article' ], [
+			'labels'            => [
+				'name'          => 'Knowledge Tags',
+				'singular_name' => 'Tag',
+			],
+			'hierarchical'      => false,
+			'show_ui'           => true,
+			'show_admin_column' => true,
+			'show_in_rest'      => true,
+		] );
+	}
+}

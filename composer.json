@@ -1,0 +1,14 @@
+{
+  "name": "stevecopeza/knowledge",
+  "description": "A local-first, ownership-first knowledge repository for WordPress.",
+  "type": "wordpress-plugin",
+  "license": "Proprietary",
+  "autoload": {
+    "psr-4": {
+      "Knowledge\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=8.0"
+  }
+}
