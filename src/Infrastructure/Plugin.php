@@ -61,6 +61,9 @@ class Plugin {
 		add_action( 'kb_version_created', [ \Knowledge\Service\AI\EmbeddingJob::class, 'schedule' ], 10, 4 );
 		add_action( 'knowledge_generate_embeddings', [ \Knowledge\Service\AI\EmbeddingJob::class, 'process' ] );
 
+		// Register AI Analysis Job
+		add_action( 'knowledge_ai_analyze_article', [ \Knowledge\Service\AI\AIAnalysisService::class, 'handle_analysis_job' ], 10, 2 );
+
 		// Initialize Filesystem Security (Runtime check)
 		add_action( 'init', [ FilesystemInitializer::class, 'ensure_security' ] );
 	}

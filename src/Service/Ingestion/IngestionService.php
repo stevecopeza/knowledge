@@ -52,6 +52,18 @@ class IngestionService {
 		$version = $this->storage->store( $source, $title, $content, $data['metadata'] ?? [], $featured_image );
 		error_log( "IngestionService: Version stored. UUID: " . $version->get_uuid() );
 		
+		// 5. Schedule AI Analysis
+		if ( function_exists( 'wp_schedule_single_event' ) ) {
+			$result = wp_schedule_single_event( time(), 'knowledge_ai_analyze_article', [ $version->get_uuid(), $version->get_article_id() ] );
+			if ( $result ) {
+				error_log( "IngestionService: AI Analysis scheduled successfully for Version UUID: " . $version->get_uuid() );
+			} else {
+				error_log( "IngestionService: Failed to schedule AI Analysis for Version UUID: " . $version->get_uuid() );
+			}
+		} else {
+			error_log( "IngestionService: wp_schedule_single_event function not found." );
+		}
+		
 		return $version;
 	}
 }

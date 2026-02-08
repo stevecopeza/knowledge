@@ -18,8 +18,23 @@ Define the exact system steps for ingesting a single article safely and determin
     e. Deduplication check.
     f. Create Article (if new).
     g. Create immutable Version.
-5. **Completion**: Update job status to "Success" or "Failed" (transient/db).
-6. **Notification**: UI Polls and displays result.
+5. **AI Analysis (Background)**:
+    - **Trigger**: Successful Version creation (`knowledge_ai_analyze_article` event).
+    - **Action**: Submit content to configured AI Provider Chain (Failover enabled).
+    - **Prompt Strategy**: Requests strictly formatted JSON containing `category`, `tags` (3-5), and `summary` (max 100 words).
+    - **Outputs**:
+        - **Category**: Matches against existing `kb_category` terms; creates new if no match.
+        - **Tags**: Sets `kb_tag` terms (append mode).
+        - **Summary**: 
+            - Saved as `kb_summary` post (child of Article).
+            - Synced to `_kb_ai_summary` post meta for efficient frontend retrieval.
+    - **Provenance**: Records Provider ID, Model Name, and Timestamp in `_kb_ai_provenance` meta.
+    - **Failure**: 
+        - If analysis fails or JSON is malformed, Article remains published.
+        - Flagged with `needs-review` tag.
+        - Error logged to system logs.
+6. **Completion**: Update job status to "Success" or "Failed" (transient/db).
+7. **Notification**: UI Polls and displays result.
 
 ## Failure Handling
 - Network or parse failure → job Failed, visible to user

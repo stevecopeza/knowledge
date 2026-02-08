@@ -49,6 +49,30 @@ This shortcode operates on **Articles only** (not Versions or Forks). It always 
 - Permission checks are enforced per Article
 - Ordering never bypasses scope restrictions
 
+### Visual Specification (Card Design)
+
+The archive renders a grid of "Article Cards".
+
+- **Default State**:
+    - **Thumbnail** (if available) or Fallback Icon.
+    - **Title**: Truncated to 2 lines.
+    - **Category**: Primary category badge.
+    - **Date**: Relative publication date (e.g., "2 days ago").
+
+- **Hover State (Desktop)**:
+    - Card reveals an overlay (slide/fade in).
+    - **Summary**: Displays the summary with the following priority:
+        1. AI-generated summary (`_kb_ai_summary`).
+        2. Manual Excerpt.
+        3. Auto-generated 20-word trim from the file-based content (stripping shortcodes/tags).
+        4. Fallback text: "View article details...".
+    - **Tags**: Displays associated tags as a pill list at the bottom of the card.
+
+- **Mobile State**:
+    - Hover effects are disabled.
+    - Tapping the card once reveals the summary/tags overlay.
+    - Tapping again (or tapping a link) navigates to the Article.
+
 ### Examples
 
 **Standard Grid**

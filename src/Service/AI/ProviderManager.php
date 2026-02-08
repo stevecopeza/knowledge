@@ -43,7 +43,13 @@ class ProviderManager {
 						$p_data['config']
 					);
 					break;
-				// Future: case 'openai': ...
+				case 'openai':
+					$this->providers[] = new \Knowledge\Service\AI\Provider\OpenAIProvider(
+						$p_data['id'],
+						$p_data['name'],
+						$p_data['config']
+					);
+					break;
 			}
 		}
 	}

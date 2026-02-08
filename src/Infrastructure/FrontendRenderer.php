@@ -20,71 +20,227 @@ class FrontendRenderer {
 			.knowledge-archive-grid {
 				display: grid;
 				grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-				gap: 20px;
-				margin: 20px 0;
+				gap: 32px;
+				margin: 32px 0;
+				padding: 0 32px;
+				box-sizing: border-box;
+				font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif;
 			}
-			.knowledge-archive-grid[data-columns='1'] { grid-template-columns: 1fr; }
-			.knowledge-archive-grid[data-columns='2'] { grid-template-columns: repeat(2, 1fr); }
-			.knowledge-archive-grid[data-columns='3'] { grid-template-columns: repeat(3, 1fr); }
-			.knowledge-archive-grid[data-columns='4'] { grid-template-columns: repeat(4, 1fr); }
-			
-			@media (max-width: 768px) {
-				.knowledge-archive-grid[data-columns] { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+
+			@media (min-width: 860px) {
+				.knowledge-archive-grid {
+					/* Reset to container width to ensure gutters and balance */
+					width: 100%;
+					margin-left: 0;
+					margin-right: 0;
+				}
+			}
+
+			@media (min-width: 1024px) {
+				.knowledge-archive-grid[data-columns=\"2\"] { grid-template-columns: repeat(2, 1fr); }
+				.knowledge-archive-grid[data-columns=\"3\"] { grid-template-columns: repeat(3, 1fr); }
+				.knowledge-archive-grid[data-columns=\"4\"] { grid-template-columns: repeat(4, 1fr); }
 			}
 
 			.knowledge-card {
-				border: 1px solid #e0e0e0;
-				border-radius: 8px;
+				background: #ffffff;
+				border-radius: 12px;
 				overflow: hidden;
-				transition: transform 0.2s, box-shadow 0.2s;
-				background: #fff;
+				box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+				transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 				display: flex;
 				flex-direction: column;
+				height: 100%;
 				text-decoration: none;
 				color: inherit;
-			}
-			.knowledge-card:hover {
-				transform: translateY(-4px);
-				box-shadow: 0 10px 20px rgba(0,0,0,0.08);
-			}
-			.knowledge-card-image {
-				height: 200px;
-				background: #f5f5f5;
-				overflow: hidden;
+				border: 1px solid #e5e7eb;
 				position: relative;
 			}
-			.knowledge-card-image img {
+
+			.knowledge-card:hover {
+				transform: translateY(-4px);
+				box-shadow: 0 12px 20px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+				border-color: #d1d5db;
+				cursor: pointer;
+			}
+
+			.knowledge-card-image-wrapper {
+				width: 100%;
+				height: 180px;
+				overflow: hidden;
+				position: relative;
+				background-color: #f3f4f6;
+				display: block;
+			}
+
+			.knowledge-card-image-wrapper img {
 				width: 100%;
 				height: 100%;
 				object-fit: cover;
+				transition: transform 0.3s ease;
 			}
-			.knowledge-card-content {
-				padding: 20px;
-				flex-grow: 1;
+
+			.knowledge-card:hover .knowledge-card-image-wrapper img {
+				transform: scale(1.05);
+			}
+
+			.knowledge-card-hover-content {
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				background: rgba(0, 0, 0, 0.75);
+				color: #fff;
+				padding: 24px;
 				display: flex;
 				flex-direction: column;
+				justify-content: flex-end;
+				opacity: 0;
+				transition: opacity 0.3s ease;
+				z-index: 2;
+				pointer-events: none;
 			}
-			.knowledge-card-title {
-				margin: 0 0 10px;
-				font-size: 1.25rem;
-				line-height: 1.4;
-				font-weight: 600;
+
+			.knowledge-card:hover .knowledge-card-hover-content {
+				opacity: 1;
 			}
-			.knowledge-card-meta {
-				margin-top: auto;
-				font-size: 0.85rem;
-				color: #666;
+
+			.knowledge-card-summary {
+				font-size: 0.9rem;
+				line-height: 1.5;
+				margin-bottom: 12px;
+				display: -webkit-box;
+				-webkit-line-clamp: 4;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+				text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+			}
+
+			.knowledge-card-hover-tags {
 				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				border-top: 1px solid #eee;
-				padding-top: 10px;
+				flex-wrap: wrap;
+				gap: 6px;
 			}
-			.knowledge-card-category {
-				background: #f0f0f0;
-				padding: 2px 8px;
-				border-radius: 12px;
+
+			.knowledge-card-hover-tags .knowledge-card-badge {
+				background: rgba(255, 255, 255, 0.25);
+				color: #fff;
+				border: 1px solid rgba(255, 255, 255, 0.1);
+			}
+
+			.knowledge-card-body {
+				padding: 16px;
+				display: flex;
+				flex-direction: column;
+				flex-grow: 1;
+			}
+
+			.knowledge-card-title {
+				font-size: 1.05rem;
+				font-weight: 600;
+				color: #111827;
+				margin: 0 0 12px 0;
+				line-height: 1.4;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+				text-decoration: none;
+			}
+			
+			a.knowledge-card-link {
+				text-decoration: none;
+				color: inherit;
+			}
+
+			/* Stretched Link */
+			a.knowledge-card-link::after {
+				content: '';
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				bottom: 0;
+				z-index: 1;
+			}
+
+			.knowledge-card-badges {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+				margin-bottom: 16px;
+				position: relative;
+				z-index: 2; /* Clickable badges */
+			}
+
+			.knowledge-card-badge {
+				display: inline-flex;
+				align-items: center;
+				padding: 2px 10px;
+				border-radius: 9999px;
+				font-size: 0.75rem;
 				font-weight: 500;
+				background-color: #f3f4f6;
+				color: #4b5563;
+				white-space: nowrap;
+				letter-spacing: 0.025em;
+			}
+
+			.knowledge-card-footer {
+				margin-top: auto;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding-top: 12px;
+				border-top: 1px solid #f3f4f6;
+				position: relative;
+				z-index: 2;
+			}
+
+			.knowledge-card-meta {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+				font-size: 0.75rem;
+				color: #6b7280;
+			}
+
+			.knowledge-card-source {
+				font-weight: 600;
+				color: #374151;
+			}
+
+			.knowledge-card-menu-btn {
+				background: none;
+				border: none;
+				padding: 4px;
+				cursor: pointer;
+				color: #9ca3af;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				border-radius: 50%;
+				transition: background-color 0.2s;
+				position: relative;
+				z-index: 3; /* Top most */
+			}
+
+			.knowledge-card-menu-btn:hover {
+				background-color: #f3f4f6;
+				color: #4b5563;
+			}
+
+			/* Fallback for no image */
+			.knowledge-no-image {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: 100%;
+				height: 100%;
+				background-color: #e5e7eb;
+				color: #9ca3af;
+				font-size: 2rem;
 			}
 			
 			/* Search Form */
@@ -212,32 +368,118 @@ class FrontendRenderer {
 			if ( has_post_thumbnail() ) {
 				$img_html = get_the_post_thumbnail( get_the_ID(), 'medium' );
 			} else {
-				$img_html = '<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#ccc;">No Image</div>';
+				$img_html = '<div class="knowledge-no-image">No Image</div>';
 			}
 
-			// Category
+			// Badges (Category + Tags, max 3)
+			$terms = [];
 			$cats = get_the_terms( get_the_ID(), 'kb_category' );
-			$cat_name = 'Uncategorized';
 			if ( $cats && ! is_wp_error( $cats ) ) {
-				$cat_name = $cats[0]->name;
+				foreach ( $cats as $c ) {
+					$terms[] = $c->name;
+				}
+			}
+			$tags = get_the_terms( get_the_ID(), 'kb_tag' );
+			if ( $tags && ! is_wp_error( $tags ) ) {
+				foreach ( $tags as $t ) {
+					$terms[] = $t->name;
+				}
+			}
+			$terms = array_slice( array_unique( $terms ), 0, 3 );
+			
+			$badges_html = '';
+			foreach ( $terms as $term_name ) {
+				$badges_html .= sprintf( '<span class="knowledge-card-badge">%s</span>', esc_html( $term_name ) );
+			}
+
+			// Source & Date
+			$source = 'Knowledge';
+			$source_url = get_post_meta( get_the_ID(), '_kb_source_url', true );
+			if ( $source_url ) {
+				$parsed = parse_url( $source_url );
+				if ( isset( $parsed['host'] ) ) {
+					$source = str_replace( 'www.', '', $parsed['host'] );
+				}
+			}
+			
+			$date = get_the_date( 'M j' );
+			
+			// Summary Priority: AI Summary -> Excerpt -> File Content -> Fallback
+			$summary = get_post_meta( get_the_ID(), '_kb_ai_summary', true );
+			
+			if ( empty( $summary ) ) {
+				$summary = get_the_excerpt();
+			}
+
+			if ( empty( $summary ) ) {
+				// Try to get content from file
+				$versions = get_posts( [
+					'post_type'      => 'kb_version',
+					'post_parent'    => get_the_ID(),
+					'posts_per_page' => 1,
+					'orderby'        => 'date',
+					'order'          => 'DESC',
+					'fields'         => 'ids',
+				] );
+
+				if ( ! empty( $versions ) ) {
+					$uuid = get_post_meta( $versions[0], '_kb_version_uuid', true );
+					if ( $uuid && defined( 'KNOWLEDGE_DATA_PATH' ) ) {
+						$file_path = KNOWLEDGE_DATA_PATH . '/versions/' . $uuid . '/content.html';
+						if ( file_exists( $file_path ) ) {
+							$raw_content = file_get_contents( $file_path );
+							$raw_content = strip_shortcodes( $raw_content );
+							$raw_content = wp_strip_all_tags( $raw_content );
+							$summary = wp_trim_words( $raw_content, 20 );
+						}
+					}
+				}
+			}
+			
+			if ( empty( $summary ) ) {
+				$summary = 'View article details...';
 			}
 
 			$output .= sprintf(
-				'<a href="%s" class="knowledge-card">
-					<div class="knowledge-card-image">%s</div>
-					<div class="knowledge-card-content">
-						<h3 class="knowledge-card-title">%s</h3>
-						<div class="knowledge-card-meta">
-							<span class="knowledge-card-category">%s</span>
-							<span class="knowledge-card-date">%s</span>
+				'<article class="knowledge-card">
+					<div class="knowledge-card-image-wrapper">
+						%s
+						<div class="knowledge-card-hover-content">
+							<div class="knowledge-card-summary">%s</div>
+							<div class="knowledge-card-hover-tags">%s</div>
 						</div>
 					</div>
-				</a>',
-				get_permalink(),
+					<div class="knowledge-card-body">
+						<a href="%s" class="knowledge-card-link">
+							<h3 class="knowledge-card-title">%s</h3>
+						</a>
+						<div class="knowledge-card-badges">
+							%s
+						</div>
+						<div class="knowledge-card-footer">
+							<div class="knowledge-card-meta">
+								<span class="knowledge-card-source">%s</span>
+								<span>•</span>
+								<span class="knowledge-card-date">%s</span>
+							</div>
+							<button class="knowledge-card-menu-btn" aria-label="Options">
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<circle cx="12" cy="12" r="1"></circle>
+									<circle cx="19" cy="12" r="1"></circle>
+									<circle cx="5" cy="12" r="1"></circle>
+								</svg>
+							</button>
+						</div>
+					</div>
+				</article>',
 				$img_html,
+				esc_html( $summary ),
+				$badges_html,
+				get_permalink(),
 				get_the_title(),
-				esc_html( $cat_name ),
-				get_the_date()
+				$badges_html,
+				esc_html( $source ),
+				esc_html( $date )
 			);
 		}
 

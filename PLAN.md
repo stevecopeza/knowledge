@@ -80,6 +80,11 @@ This document tracks the implementation progress of the Knowledge Plugin.
 - [x] **Chat UI**
     - [x] Simple Admin Chat Widget
 
+- [x] **Content Analysis Service**
+    - [x] `AIAnalysisService` (Categorization, Tagging, Summarization)
+    - [x] Background Job Integration (`knowledge_ai_analyze_article`)
+    - [x] Provenance Tracking (`_kb_ai_provenance`)
+
 ---
 **Legend:**
 🟢 Ready to Start  |  🟡 Planned  |  🔴 Blocked / Future

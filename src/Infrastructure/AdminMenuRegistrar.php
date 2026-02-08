@@ -535,6 +535,46 @@ class AdminMenuRegistrar {
 	}
 
 	public function render_operations_overview(): void {
+		// Handle Manual AI Analysis
+		if ( isset( $_POST['knowledge_run_ai_analysis'] ) && check_admin_referer( 'knowledge_run_ai_analysis' ) ) {
+			// Find articles with no category or explicitly requested
+			$articles = get_posts( [
+				'post_type'      => 'kb_article',
+				'posts_per_page' => 5, // Limit to 5 to avoid timeout
+				'tax_query'      => [
+					[
+						'taxonomy' => 'kb_category',
+						'operator' => 'NOT EXISTS',
+					]
+				]
+			] );
+
+			$count = 0;
+			foreach ( $articles as $article ) {
+				// Find latest version
+				$versions = get_posts( [
+					'post_type'      => 'kb_version',
+					'post_parent'    => $article->ID,
+					'posts_per_page' => 1,
+					'orderby'        => 'date',
+					'order'          => 'DESC',
+				] );
+				
+				if ( ! empty( $versions ) ) {
+					$version_uuid = get_post_meta( $versions[0]->ID, '_kb_version_uuid', true );
+					if ( $version_uuid ) {
+						try {
+							\Knowledge\Service\AI\AIAnalysisService::handle_analysis_job( $version_uuid, $article->ID );
+							$count++;
+						} catch ( \Exception $e ) {
+							error_log( "Manual AI Analysis failed for Article {$article->ID}: " . $e->getMessage() );
+						}
+					}
+				}
+			}
+			echo '<div class="notice notice-success"><p>Processed AI Analysis for ' . intval( $count ) . ' articles.</p></div>';
+		}
+
 		if ( isset( $_POST['knowledge_flush_rewrite'] ) && check_admin_referer( 'knowledge_flush_rewrite' ) ) {
 			flush_rewrite_rules();
 			echo '<div class="notice notice-success"><p>Rewrite rules flushed successfully.</p></div>';
@@ -756,6 +796,14 @@ class AdminMenuRegistrar {
 		// 5. Maintenance Section
 		echo '<div class="card" style="max-width: 800px; padding: 1em; margin-bottom: 20px;">';
 		echo '<h3>System Maintenance</h3>';
+		
+		echo '<p><strong>Run AI Analysis:</strong> Process up to 5 uncategorized articles immediately.</p>';
+		echo '<form method="post" action="">';
+		wp_nonce_field( 'knowledge_run_ai_analysis' );
+		echo submit_button( 'Process Uncategorized Articles', 'primary', 'knowledge_run_ai_analysis' );
+		echo '</form>';
+		echo '<hr>';
+
 		echo '<p><strong>Flush Rewrite Rules:</strong> Use this if you are experiencing 404 errors on content or images.</p>';
 		echo '<form method="post" action="">';
 		wp_nonce_field( 'knowledge_flush_rewrite' );

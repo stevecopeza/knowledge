@@ -30,7 +30,7 @@ class OllamaClient implements AIClientInterface {
 		$response = wp_remote_post( $url, [
 			'body'    => wp_json_encode( $body ),
 			'headers' => [ 'Content-Type' => 'application/json' ],
-			'timeout' => 60,
+			'timeout' => 180,
 		] );
 
 		if ( is_wp_error( $response ) ) {
