@@ -65,6 +65,7 @@ class AdminMenuRegistrar {
 		wp_localize_script( 'knowledge-chat', 'knowledgeChat', [
 			'ajaxurl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'knowledge_chat_nonce' ),
+			'ollama_url' => get_option( 'knowledge_ollama_url', 'http://192.168.5.183:11434' ),
 		] );
 
 		wp_enqueue_style(
@@ -82,6 +83,11 @@ class AdminMenuRegistrar {
 		echo '<div id="knowledge-chat-history"></div>';
 		echo '<div id="knowledge-chat-status"></div>';
 		echo '<div id="knowledge-chat-controls">';
+		echo '<select id="knowledge-chat-mode" class="regular-text" style="max-width: 150px; margin-right: 10px;">';
+		echo '<option value="rag_only">RAG Content Only</option>';
+		echo '<option value="llm_only">LLM Only</option>';
+		echo '<option value="combined">Combined (Balanced)</option>';
+		echo '</select>';
 		echo '<input type="text" id="knowledge-chat-input" placeholder="Ask a question about your knowledge base..." class="regular-text">';
 		echo '<button id="knowledge-chat-submit" class="button button-primary">Ask</button>';
 		echo '</div>';
@@ -139,7 +145,7 @@ class AdminMenuRegistrar {
 			echo '<div class="notice notice-success"><p>Scheduled embedding generation for ' . intval( $count ) . ' versions. This process runs in the background.</p></div>';
 		}
 
-		$url   = get_option( 'knowledge_ollama_url', 'http://localhost:11434' );
+		$url   = get_option( 'knowledge_ollama_url', 'http://192.168.5.183:11434' );
 		$model = get_option( 'knowledge_ollama_model', 'llama3' );
 		
 		// Check Connection
@@ -162,7 +168,7 @@ class AdminMenuRegistrar {
 		
 		echo '<tr><th scope="row"><label for="ollama_url">Ollama URL</label></th>';
 		echo '<td><input name="knowledge_ollama_url" type="url" id="ollama_url" value="' . esc_attr( $url ) . '" class="regular-text" required>';
-		echo '<p class="description">Default: http://localhost:11434</p></td></tr>';
+		echo '<p class="description">Default: http://192.168.5.183:11434</p></td></tr>';
 
 		echo '<tr><th scope="row"><label for="ollama_model">Model Name</label></th>';
 		echo '<td>';

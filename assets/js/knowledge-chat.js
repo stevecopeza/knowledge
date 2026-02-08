@@ -4,6 +4,21 @@ jQuery(document).ready(function($) {
     const $submit = $('#knowledge-chat-submit');
     const $status = $('#knowledge-chat-status');
 
+    // Display Connection Info
+    if (knowledgeChat.ollama_url) {
+        const $container = $('#knowledge-chat-container');
+        const $connectionInfo = $('<div>')
+            .css({
+                'font-size': '11px',
+                'color': '#888',
+                'margin-top': '8px',
+                'text-align': 'right',
+                'font-style': 'italic'
+            })
+            .text('Using AI Provider: ' + knowledgeChat.ollama_url);
+        $container.append($connectionInfo);
+    }
+
     function appendMessage(sender, text, type) {
         const $msg = $('<div>').addClass('knowledge-chat-message').addClass('message-' + type);
         
@@ -17,6 +32,8 @@ jQuery(document).ready(function($) {
 
     function askAI() {
         const question = $input.val().trim();
+        const mode = $('#knowledge-chat-mode').val();
+        
         if (!question) return;
 
         // UI Updates
@@ -32,7 +49,8 @@ jQuery(document).ready(function($) {
             data: {
                 action: 'knowledge_chat',
                 nonce: knowledgeChat.nonce,
-                question: question
+                question: question,
+                mode: mode
             },
             success: function(response) {
                 if (response.success) {

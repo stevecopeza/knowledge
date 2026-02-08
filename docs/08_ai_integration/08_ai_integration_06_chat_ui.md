@@ -17,28 +17,39 @@ The Chat UI allows administrators to ask natural language questions about the in
 - **Technology**: jQuery, standard WordPress Admin styles.
 - **Interaction**:
     - User types a question.
-    - AJAX request sends the question to the backend.
+    - User selects a **Search Mode** (RAG Only, LLM Only, Combined).
+    - AJAX request sends the question and mode to the backend.
     - UI shows a "Thinking..." state.
     - Answer is streamed or displayed upon completion (currently block response).
+    - **Status Footer**: A footer displays the active AI Provider URL (e.g., `Using AI Provider: http://192.168.5.183:11434`) for verification.
 
 ### Backend (`ChatHandler`)
 - **Endpoint**: `wp_ajax_knowledge_chat`
 - **Process**:
-    1.  **Embed Query**: The user's question is converted into a vector using `OllamaClient::embed()`.
-    2.  **Vector Search**: `VectorStore::search()` scans existing embeddings for cosine similarity.
-    3.  **Context Assembly**: The top 3-5 matching chunks are retrieved.
-    4.  **Prompt Construction**: A strict system prompt is combined with the retrieved chunks and the user's question.
-    5.  **Generation**: `OllamaClient::chat()` is called to generate the final answer.
+    1.  **Mode Handling**: The system checks the requested `mode`:
+        - **RAG Only** (Default): Strict grounding (see below).
+        - **LLM Only**: Skips vector search, asks LLM directly.
+        - **Combined**: Performs vector search but allows LLM to use general knowledge if context is insufficient.
+    2.  **Embed Query**: (RAG/Combined only) The user's question is converted into a vector using `OllamaClient::embed()`.
+    3.  **Vector Search**: (RAG/Combined only) `VectorStore::search()` scans existing embeddings.
+    4.  **Context Assembly**: The top 3 matching chunks are retrieved.
+    5.  **Prompt Construction**: A specific prompt is selected based on the mode.
+    6.  **Generation**: `OllamaClient::chat()` is called to generate the final answer.
 
 ---
 
 ## 3. RAG Prompt Strategy
 
-The system uses a **Grounding Prompt** to minimize hallucinations:
+The system uses different prompts based on the selected mode:
 
-> "You are a helpful assistant. Use ONLY the following context to answer the question. If the answer is not in the context, say you don't know."
+### 3.1 RAG Only (Strict)
+> "Answer the user's question based ONLY on the provided context below. If the answer is not in the context, say you don't know."
 
-This ensures the AI relies on the *Knowledge Plugin's* data rather than its training data.
+### 3.2 Combined (Balanced)
+> "Answer the user's question using the provided context. If the context is insufficient, you may use your general knowledge to answer, but please mention if the information comes from outside the knowledge base."
+
+### 3.3 LLM Only
+> "Answer the user's question to the best of your ability using your general knowledge."
 
 ---
 

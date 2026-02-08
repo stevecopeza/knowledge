@@ -18,6 +18,13 @@ class ChatHandler {
 		}
 
 		$question = sanitize_text_field( $_POST['question'] ?? '' );
+		$mode     = sanitize_text_field( $_POST['mode'] ?? 'rag_only' );
+		
+		// Validate mode
+		if ( ! in_array( $mode, [ 'rag_only', 'llm_only', 'combined' ], true ) ) {
+			$mode = 'rag_only';
+		}
+
 		if ( empty( $question ) ) {
 			wp_send_json_error( 'Empty question' );
 		}
@@ -25,7 +32,7 @@ class ChatHandler {
 		try {
 			// Manual instantiation for MVP
 			$service = new ChatService();
-			$answer  = $service->ask( $question );
+			$answer  = $service->ask( $question, $mode );
 			
 			wp_send_json_success( [ 'answer' => $answer ] );
 
