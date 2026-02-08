@@ -83,10 +83,11 @@ class AdminMenuRegistrar {
 		echo '<div id="knowledge-chat-history"></div>';
 		echo '<div id="knowledge-chat-status"></div>';
 		echo '<div id="knowledge-chat-controls">';
-		echo '<select id="knowledge-chat-mode" class="regular-text" style="max-width: 150px; margin-right: 10px;">';
+		echo '<select id="knowledge-chat-mode" class="regular-text" style="max-width: 250px; margin-right: 10px;">';
+		echo '<option value="combined_prioritised" selected>Combined (RAG Prioritised)</option>';
 		echo '<option value="rag_only">RAG Content Only</option>';
 		echo '<option value="llm_only">LLM Only</option>';
-		echo '<option value="combined">Combined (Balanced)</option>';
+		echo '<option value="combined_balanced">Combined (Balanced)</option>';
 		echo '</select>';
 		echo '<input type="text" id="knowledge-chat-input" placeholder="Ask a question about your knowledge base..." class="regular-text">';
 		echo '<button id="knowledge-chat-submit" class="button button-primary">Ask</button>';

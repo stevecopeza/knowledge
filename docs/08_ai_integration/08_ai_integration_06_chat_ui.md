@@ -27,9 +27,10 @@ The Chat UI allows administrators to ask natural language questions about the in
 - **Endpoint**: `wp_ajax_knowledge_chat`
 - **Process**:
     1.  **Mode Handling**: The system checks the requested `mode`:
-        - **RAG Only** (Default): Strict grounding (see below).
+        - **Combined (RAG Prioritised)** (Default): Uses context as primary truth, but fills gaps with general knowledge.
+        - **RAG Only**: Strict grounding; answers ONLY from context.
         - **LLM Only**: Skips vector search, asks LLM directly.
-        - **Combined**: Performs vector search but allows LLM to use general knowledge if context is insufficient.
+        - **Combined (Balanced)**: Uses context if helpful, but freely uses general knowledge.
     2.  **Embed Query**: (RAG/Combined only) The user's question is converted into a vector using `OllamaClient::embed()`.
     3.  **Vector Search**: (RAG/Combined only) `VectorStore::search()` scans existing embeddings.
     4.  **Context Assembly**: The top 3 matching chunks are retrieved.
@@ -42,14 +43,17 @@ The Chat UI allows administrators to ask natural language questions about the in
 
 The system uses different prompts based on the selected mode:
 
-### 3.1 RAG Only (Strict)
-> "Answer the user's question based ONLY on the provided context below. If the answer is not in the context, say you don't know."
+### 3.1 Combined (RAG Prioritised) - Default
+> "Answer the user's question using the provided context. If the context is insufficient, you may supplement with general knowledge to provide a complete answer, but prioritize the information from the knowledge base."
 
-### 3.2 Combined (Balanced)
-> "Answer the user's question using the provided context. If the context is insufficient, you may use your general knowledge to answer, but please mention if the information comes from outside the knowledge base."
+### 3.2 RAG Only (Strict)
+> "Answer the user's question based ONLY on the provided context below. If the answer is not in the context, say you don't know."
 
 ### 3.3 LLM Only
 > "Answer the user's question to the best of your ability using your general knowledge."
+
+### 3.4 Combined (Balanced)
+> "Answer the user's question using the provided context. If the context is insufficient, you may use your general knowledge to answer, but please mention if the information comes from outside the knowledge base."
 
 ---
 

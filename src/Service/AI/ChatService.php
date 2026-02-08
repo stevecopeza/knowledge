@@ -11,7 +11,7 @@ class ChatService {
 		$this->store  = new VectorStore();
 	}
 
-	public function ask( string $question, string $mode = 'rag_only' ): string {
+	public function ask( string $question, string $mode = 'combined_prioritised' ): string {
 		if ( ! $this->client->is_available() ) {
 			return "Error: AI Service is not available. Please check your configuration.";
 		}
@@ -50,7 +50,7 @@ Answer the user's question to the best of your ability using your general knowle
 Question: $question
 Answer:
 EOT;
-		} elseif ( $mode === 'combined' ) {
+		} elseif ( $mode === 'combined_balanced' || $mode === 'combined' ) { // Support legacy 'combined'
 			$prompt = <<<EOT
 You are a helpful assistant for a personal knowledge base.
 Answer the user's question using the provided context.
@@ -61,12 +61,23 @@ $context_text
 Question: $question
 Answer:
 EOT;
-		} else { // rag_only (Default)
+		} elseif ( $mode === 'rag_only' ) {
 			$prompt = <<<EOT
 You are a helpful assistant for a personal knowledge base.
 Answer the user's question based ONLY on the provided context below.
 If the answer is not in the context, say "I don't have enough information in the knowledge base to answer this."
 Do not invent facts.
+
+$context_text
+
+Question: $question
+Answer:
+EOT;
+		} else { // combined_prioritised (Default)
+			$prompt = <<<EOT
+You are a helpful assistant for a personal knowledge base.
+Answer the user's question using the provided context.
+If the context is insufficient, you may supplement with general knowledge to provide a complete answer, but prioritize the information from the knowledge base.
 
 $context_text
 
