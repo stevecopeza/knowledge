@@ -22,6 +22,45 @@ class Plugin {
 		$cpt_registrar = new CptRegistrar();
 		$cpt_registrar->init();
 
+		// Initialize Admin Menu
+		$admin_menu = new AdminMenuRegistrar();
+		$admin_menu->init();
+
+		// Initialize Admin Columns
+		$admin_columns = new AdminColumnsRegistrar();
+		$admin_columns->init();
+
+		// Initialize Version Viewer
+		$version_viewer = new VersionViewer();
+		$version_viewer->init();
+
+		// Initialize Fork Handler
+		$fork_handler = new ForkHandler();
+		$fork_handler->init();
+
+		// Initialize Search Handler
+		$search_handler = new SearchHandler();
+		$search_handler->init();
+
+		// Initialize Chat Handler
+		$chat_handler = new ChatHandler();
+		$chat_handler->init();
+
+		// Initialize File Proxy
+		$file_proxy = new FileProxyController();
+		$file_proxy->init();
+
+		// Initialize Frontend Renderer
+		$frontend_renderer = new FrontendRenderer();
+		$frontend_renderer->init();
+
+		// Register Async Ingestion Handler
+		add_action( 'knowledge_async_ingest', [ AdminMenuRegistrar::class, 'process_async_ingestion' ] );
+
+		// Register AI Embedding Job
+		add_action( 'kb_version_created', [ \Knowledge\Service\AI\EmbeddingJob::class, 'schedule' ], 10, 4 );
+		add_action( 'knowledge_generate_embeddings', [ \Knowledge\Service\AI\EmbeddingJob::class, 'process' ] );
+
 		// Initialize Filesystem Security (Runtime check)
 		add_action( 'init', [ FilesystemInitializer::class, 'ensure_security' ] );
 	}

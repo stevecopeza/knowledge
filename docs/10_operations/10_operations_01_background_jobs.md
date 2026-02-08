@@ -37,9 +37,33 @@ States:
 
 State is persisted and queryable.
 
+## 4. Monitoring & Visibility (JobTracker)
+
+To ensure operational transparency, the system uses a **JobTracker** service to monitor execution.
+
+- **Active Jobs**: Jobs currently executing in a PHP process. These are tracked in real-time via the `JobTracker` class, which maintains a registry of running tasks (e.g., "Embedding Generation", "Ingestion").
+- **Scheduled Queue**: Jobs waiting in the WordPress Cron system to be picked up.
+
+**Dashboard Visibility**:
+The **Operations** dashboard exposes both lists:
+1.  **Active Jobs Table**: Shows job type, description, and start time.
+2.  **Scheduled Queue Table**: Shows upcoming cron events and their arguments.
+
+This dual-view prevents the "invisible job" problem where a job disappears from the Cron queue (because it started) but hasn't finished yet.
+
+## 5. Failure Management (FailureLog)
+
+Failures in background jobs (specifically ingestion) are not ephemeral. They are persisted until resolved.
+
+- **Storage**: Failed jobs are logged to the database (max 50 entries) via `FailureLog`.
+- **Visibility**: Displayed in the **Operations** dashboard with timestamps and error messages.
+- **Resolution**:
+    - **Resubmit**: Re-schedules the job immediately and removes the error log.
+    - **Dismiss**: Acknowledges the error and removes the log without action.
+
 ---
 
-## 4. Retry Semantics
+## 6. Retry Semantics
 
 - Retries are explicit
 - Backoff strategies are configurable

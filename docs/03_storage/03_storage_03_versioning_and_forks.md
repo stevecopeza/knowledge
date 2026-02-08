@@ -47,6 +47,13 @@ Rules:
 - **Pinning**: Forks are strictly pinned to their parent Version. They do NOT automatically update when a new Version of the Article appears.
 - **Rebase**: "Rebasing" a Fork onto a new Version is a manual, user-initiated copy-paste operation in MVP.
 
+**Implementation**:
+- Fork is a `kb_fork` Custom Post Type.
+- Upon creation, the content of the immutable Version is copied to the Fork's `post_content`.
+- Editing happens via the standard WordPress Editor.
+- On save, the content is synced to the filesystem at `/wp-content/kb-data/forks/{fork_uuid}/content.html`.
+- Metadata (parent UUID, lineage) is stored in `metadata.json`.
+
 ---
 
 ## 5. Fork vs New Version

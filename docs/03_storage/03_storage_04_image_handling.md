@@ -97,6 +97,17 @@ Rules:
 
 ---
 
+## 9. Featured Images
+
+While the Knowledge system is "filesystem-first", it bridges to the WordPress ecosystem for compatibility with themes and archives.
+
+*   **Detection**: During ingestion, the system identifies the "best candidate" for a featured image (typically the first significant image downloaded).
+*   **Sideloading**: This specific image is "sideloaded" into the WordPress Media Library (creating a standard `attachment` post).
+*   **Assignment**: The attachment ID is set as the `_thumbnail_id` of the `kb_article` post.
+*   **Purpose**: This allows the Knowledge Archive and standard WordPress loops to display article thumbnails without needing to parse the filesystem content.
+
+---
+
 ## Closing Note
 
 Image handling is part of content integrity. Any shortcut that breaks offline use or deduplication is invalid.

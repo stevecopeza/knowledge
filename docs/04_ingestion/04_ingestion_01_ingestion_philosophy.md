@@ -24,6 +24,8 @@ Ingestion proceeds through stages:
     - Validates integrity.
     - Moves to canonical storage (`/versions/`) only on success.
 2. Normalisation
+    - `ContentNormalizer` cleans HTML and extracts metadata (Author, Date, Description).
+    - `AssetDownloader` fetches images, saves them to `/media/{hash}.ext`, and rewrites `<img>` tags to use the secure `?kb_action=file_proxy` URL.
 3. Enrichment (summaries, metadata)
 4. Embedding
 

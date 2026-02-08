@@ -95,116 +95,85 @@ Purpose: Primary entry point for all knowledge-related operations.
 
 ---
 
-### 2.5 Categories
+### 2.5 Ingestion
+
+**Menu:** Knowledge → Ingestion
+
+**Purpose:** Manual content ingestion tools.
+
+**Contents:**
+- Single URL Ingestion Form
+- Bulk Import (CSV/Text)
+- Async Job Status
+
+---
+
+### 2.6 Search
+
+**Menu:** Knowledge → Search
+
+**Purpose:** Internal search and discovery interface.
+
+**Contents:**
+- Search Input (Keyword / Semantic)
+- Filters (Date, Source, Project)
+- Results View
+
+---
+
+### 2.7 Ask AI
+
+**Menu:** Knowledge → Ask AI
+
+**Purpose:** Chat interface for RAG-based Q&A.
+
+**Contents:**
+- Chat Window
+- History View
+- Context Inspector
+
+---
+
+### 2.8 AI Settings
+
+**Menu:** Knowledge → AI Settings
+
+**Purpose:** Configuration for AI integrations (RAG).
+
+**Contents:**
+- Connection Settings (Ollama URL)
+- Model Selection (Dropdown with status check)
+- Embedding Configuration
+
+---
+
+### 2.9 Operations
+
+**Menu:** Knowledge → Operations
+
+**Purpose:** System maintenance and background tasks.
+
+**Contents:**
+- Flush Rewrite Rules (Fix 404s)
+- Background Job Monitor
+- Cache Management
+- Re-indexing Tools
+- Export / Backup
+
+---
+
+## 3. Taxonomy Submenus
+
+These appear under the "Articles" menu in standard WordPress fashion, but are part of the information architecture.
+
+### 3.1 Categories
 
 **Menu:** Knowledge → Categories
 
 **Purpose:** Primary semantic organisation.
 
-**Contents:**
-- Category list
-- Category descriptions
-- Scoring context definitions
-
-**Tabs:**
-- Categories (default)
-- Scoring Rules
-
----
-
-### 2.6 Tags
+### 3.2 Tags
 
 **Menu:** Knowledge → Tags
 
 **Purpose:** Secondary, ad-hoc organisation.
-
-**Contents:**
-- Tag list
-
-**Tabs:** None
-
----
-
-### 2.7 Ingestion
-
-**Menu:** Knowledge → Ingestion
-
-**Purpose:** Entry point for adding content.
-
-**Tabs:**
-- Add URL
-- Bulk Import
-- Import History
-- Update Checks
-
----
-
-### 2.8 Search
-
-**Menu:** Knowledge → Search
-
-**Purpose:** Unified search across knowledge.
-
-**Tabs:**
-- Deterministic Search (default)
-- Semantic Search (if enabled)
-- Saved Searches
-
----
-
-### 2.9 AI & RAG
-
-**Menu:** Knowledge → AI & RAG
-
-**Purpose:** AI configuration and inspection.
-
-**Tabs:**
-- AI Status
-- RAG Scopes
-- Embeddings
-- Explainability Logs
-
----
-
-### 2.10 Operations
-
-**Menu:** Knowledge → Operations
-
-**Purpose:** Administrative and maintenance tasks.
-
-**Tabs:**
-- Background Jobs
-- Backups
-- Migrations
-- Offline Status
-
----
-
-### 2.11 Settings
-
-**Menu:** Knowledge → Settings
-
-**Purpose:** Global configuration.
-
-**Tabs:**
-- General
-- Permissions
-- API Tokens
-- Notifications
-- Advanced
-
----
-
-## 3. Design Rules (Non-Negotiable)
-
-- No menu item combines **content** and **configuration**
-- Tabs are used only when views exceed one mental model
-- Default tabs always show read-only or safe actions
-- Destructive actions are never on default tabs
-
----
-
-## Closing Note
-
-This menu structure mirrors the domain model. If a menu item cannot be justified in domain terms, it does not belong in the UI.
-

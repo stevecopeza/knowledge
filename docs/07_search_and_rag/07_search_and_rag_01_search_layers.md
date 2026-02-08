@@ -24,7 +24,8 @@ Deterministic search indexes:
 **Implementation:**
 - **Technology**: Custom WordPress table (`wp_kb_search_index`) with FullText support.
 - **Strategy**: "Shadow Content". Text content from the filesystem is mirrored into this table.
-- **Sync**: Updated via background jobs on save.
+- **Sync**: Updated via `SearchIndexService` hooks (`kb_version_created`, `kb_fork_updated`) immediately on save.
+- **Interception**: `SearchHandler` intercepts `pre_get_posts` to inject matching UUIDs into standard WordPress search results.
 
 Rules:
 - Permission-aware

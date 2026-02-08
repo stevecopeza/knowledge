@@ -42,9 +42,11 @@ Rules:
 - Embeddings are stored in the `/ai/embeddings/` directory
 - Manifests map embeddings to source objects and chunks
 
-**MVP Implementation Strategy:**
-- **Format**: Simple JSON/Binary flat files per object.
-- **Retrieval**: In-memory linear scan (brute-force cosine similarity).
+**MVP Implementation:**
+- **Chunking**: `ChunkingService` splits content into 500-token chunks with 50-token overlap.
+- **Generation**: `EmbeddingGenerator` job processes chunks using Ollama (default: `llama3.2`).
+- **Storage**: `VectorStore` saves embeddings as JSON files in `wp-content/uploads/knowledge_data/ai/embeddings/`.
+- **Retrieval**: In-memory linear scan (brute-force cosine similarity) via `VectorStore::search()`.
 - **Scale**: Suitable for < 10,000 vectors.
 - **Future**: Migrate to SQLite-vss or dedicated local vector store if scale requires.
 

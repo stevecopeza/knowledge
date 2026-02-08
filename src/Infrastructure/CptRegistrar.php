@@ -32,8 +32,9 @@ class CptRegistrar {
 			],
 			'public'       => true,
 			'has_archive'  => true,
+			'show_in_menu' => 'knowledge-main',
 			'menu_icon'    => 'dashicons-book',
-			'supports'     => [ 'title', 'author', 'revisions' ],
+			'supports'     => [ 'title', 'author', 'revisions', 'thumbnail' ],
 			'show_in_rest' => true,
 			'rewrite'      => [ 'slug' => 'kb' ],
 		] );
@@ -47,7 +48,7 @@ class CptRegistrar {
 			],
 			'public'       => false, // Internal use mostly
 			'show_ui'      => true,
-			'show_in_menu' => 'edit.php?post_type=kb_article', // Submenu of Articles
+			'show_in_menu' => 'knowledge-main',
 			'supports'     => [ 'title', 'author' ],
 			'capabilities' => [
 				'create_posts' => 'do_not_allow', // Immutable via UI
@@ -64,7 +65,7 @@ class CptRegistrar {
 			],
 			'public'       => true,
 			'show_ui'      => true,
-			'show_in_menu' => 'edit.php?post_type=kb_article',
+			'show_in_menu' => 'knowledge-main',
 			'supports'     => [ 'title', 'editor', 'author' ],
 		] );
 	}
@@ -77,6 +78,7 @@ class CptRegistrar {
 			],
 			'public'       => true,
 			'show_ui'      => true,
+			'show_in_menu' => 'knowledge-main',
 			'menu_icon'    => 'dashicons-portfolio',
 			'supports'     => [ 'title', 'editor', 'author' ],
 		] );

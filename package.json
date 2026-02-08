@@ -1,0 +1,26 @@
+{
+  "name": "knowledge",
+  "version": "1.0.0",
+  "description": "**A local-first, ownership-first knowledge repository designed for epistemic durability.**",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevecopeza/knowledge.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/stevecopeza/knowledge/issues"
+  },
+  "homepage": "https://github.com/stevecopeza/knowledge#readme",
+  "devDependencies": {
+    "puppeteer": "^24.37.2"
+  }
+}
