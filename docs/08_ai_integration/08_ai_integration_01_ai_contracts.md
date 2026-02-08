@@ -42,7 +42,7 @@ AI systems may not:
 ## 4. Replaceability
 
 AI components must be:
-- Hot-swappable
+- Hot-swappable (managed via `ProviderManager`)
 - Stateless with respect to canonical data
 
 All AI artifacts must be rebuildable.

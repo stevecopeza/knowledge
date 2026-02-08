@@ -21,7 +21,7 @@ class ChatHandler {
 		$mode     = sanitize_text_field( $_POST['mode'] ?? 'rag_only' );
 		
 		// Validate mode
-		if ( ! in_array( $mode, [ 'rag_only', 'llm_only', 'combined' ], true ) ) {
+		if ( ! in_array( $mode, [ 'rag_only', 'llm_only', 'combined', 'combined_prioritised', 'combined_balanced' ], true ) ) {
 			$mode = 'rag_only';
 		}
 
@@ -32,9 +32,12 @@ class ChatHandler {
 		try {
 			// Manual instantiation for MVP
 			$service = new ChatService();
-			$answer  = $service->ask( $question, $mode );
+			$result  = $service->ask( $question, $mode );
 			
-			wp_send_json_success( [ 'answer' => $answer ] );
+			wp_send_json_success( [ 
+				'answer'     => $result['answer'],
+				'provenance' => $result['provenance']
+			] );
 
 		} catch ( \Exception $e ) {
 			wp_send_json_error( $e->getMessage() );

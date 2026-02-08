@@ -8,7 +8,7 @@ class OllamaClient implements AIClientInterface {
 
 	public function __construct( string $base_url = '', string $model = '' ) {
 		if ( empty( $base_url ) ) {
-			$base_url = get_option( 'knowledge_ollama_url', 'http://localhost:11434' );
+			$base_url = get_option( 'knowledge_ollama_url', 'http://192.168.5.183:11434' );
 		}
 		if ( empty( $model ) ) {
 			$model = get_option( 'knowledge_ollama_model', 'llama3' );

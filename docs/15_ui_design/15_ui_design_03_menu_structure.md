@@ -138,12 +138,15 @@ Purpose: Primary entry point for all knowledge-related operations.
 
 **Menu:** Knowledge → AI Settings
 
-**Purpose:** Configuration for AI integrations (RAG).
+**Purpose:** Configuration for AI providers and integration (RAG).
 
 **Contents:**
-- Connection Settings (Ollama URL)
-- Model Selection (Dropdown with status check)
-- Embedding Configuration
+- Provider List (Drag-and-drop ordering)
+- Add/Edit/Remove Provider Interface
+    - Dynamic field validation (spinner on blur)
+    - Auto-complete for Model names
+- Status Indicators (Color-coded connection bands: Green/Red/Yellow)
+- Knowledge Index Rebuild Tool
 
 ---
 

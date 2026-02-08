@@ -148,17 +148,32 @@ Tabs: Overview | Knowledge | Tasks | Progress | Notifications | Settings
 
 ---
 
-## 9. Knowledge → AI & RAG
+## 9. Knowledge → AI Settings
 
 ```
-┌ Knowledge › AI & RAG ──────────────────────────────┐
-│ AI Status | RAG Scopes | Embeddings | Explainability│
+┌ Knowledge › AI Settings ───────────────────────────┐
+│ AI Providers | Indexing                             │
 ├────────────────────────────────────────────────────┤
-│ ▣ AI Status: Ready                                 │
-│ ▣ Models Loaded: llama, embedding-model            │
-│                                                     │
-│ ▣ Last RAG Query                                   │
-│   Sources used: 4                                  │
+│ Configure AI providers. Drag to reorder priority.  │
+│                                                    │
+│ ┌────────────────────────────────────────────────┐ │
+│ │ ✥ Local Ollama  [ollama]      (Edit) (Remove)│▐│ < Green (Connected)
+│ │   URL: http://127.0.0.1:11434                  │▐│
+│ └────────────────────────────────────────────────┘ │
+│                                                    │
+│ ┌────────────────────────────────────────────────┐ │
+│ │ ✥ OpenAI Backup [openai]      (Edit) (Remove)│▐│ < Red (Disconnected)
+│ │   Model: gpt-4o                                │▐│
+│ └────────────────────────────────────────────────┘ │
+│                                                    │
+│ (Add Provider)                                     │
+│                                                    │
+│ [ Save Changes ]                                   │
+│                                                    │
+│ ────────────────────────────────────────────────── │
+│                                                    │
+│ Knowledge Index                                    │
+│ (Rebuild Knowledge Index)                          │
 └────────────────────────────────────────────────────┘
 ```
 

@@ -44,7 +44,7 @@ Rules:
 
 **MVP Implementation:**
 - **Chunking**: `ChunkingService` splits content into 500-token chunks with 50-token overlap.
-- **Generation**: `EmbeddingGenerator` job processes chunks using Ollama (default: `llama3.2`).
+- **Generation**: `EmbeddingGenerator` job processes chunks using the **Primary AI Provider** (default: `llama3.2`).
 - **Storage**: `VectorStore` saves embeddings as JSON files in `wp-content/uploads/knowledge_data/ai/embeddings/`.
 - **Retrieval**: In-memory linear scan (brute-force cosine similarity) via `VectorStore::search()`.
 - **Scale**: Suitable for < 10,000 vectors.

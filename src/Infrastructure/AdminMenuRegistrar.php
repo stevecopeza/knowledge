@@ -6,6 +6,46 @@ class AdminMenuRegistrar {
 
 	public function init(): void {
 		add_action( 'admin_menu', [ $this, 'register_main_menu' ] );
+		add_action( 'wp_ajax_knowledge_check_connection', [ $this, 'handle_check_connection' ] );
+	}
+
+	public function handle_check_connection(): void {
+		check_ajax_referer( 'knowledge_check_nonce', 'nonce' );
+		
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Permission denied' );
+		}
+
+		$type = sanitize_text_field( $_POST['type'] ?? '' );
+		$config = $_POST['config'] ?? [];
+
+		// Sanitize config
+		$clean_config = [
+			'url'     => esc_url_raw( $config['url'] ?? '' ),
+			'model'   => sanitize_text_field( $config['model'] ?? '' ),
+			'api_key' => sanitize_text_field( $config['api_key'] ?? '' ),
+		];
+
+		try {
+			$provider = null;
+			if ( $type === 'ollama' ) {
+				$provider = new \Knowledge\Service\AI\Provider\OllamaProvider( 'temp', 'temp', $clean_config );
+			} elseif ( $type === 'openai' ) {
+				$provider = new \Knowledge\Service\AI\Provider\OpenAIProvider( 'temp', 'temp', $clean_config );
+			}
+
+			if ( $provider && $provider->is_available() ) {
+				$models = [];
+				if ( method_exists( $provider, 'get_models' ) ) {
+					$models = $provider->get_models();
+				}
+				wp_send_json_success( [ 'message' => 'Connected', 'models' => $models ] );
+			} else {
+				wp_send_json_error( 'Unavailable' );
+			}
+		} catch ( \Exception $e ) {
+			wp_send_json_error( $e->getMessage() );
+		}
 	}
 
 	public function register_main_menu(): void {
@@ -108,7 +148,7 @@ class AdminMenuRegistrar {
 	}
 
 	private function register_ai_settings_submenu(): void {
-		add_submenu_page(
+		$hook = add_submenu_page(
 			'knowledge-main',
 			'AI Settings',
 			'AI Settings',
@@ -116,13 +156,52 @@ class AdminMenuRegistrar {
 			'knowledge-ai-settings',
 			[ $this, 'render_ai_settings' ]
 		);
+
+		add_action( 'load-' . $hook, [ $this, 'enqueue_settings_assets' ] );
+	}
+
+	public function enqueue_settings_assets(): void {
+		$plugin_url = plugin_dir_url( dirname( __DIR__, 2 ) . '/knowledge.php' );
+		
+		wp_enqueue_script(
+			'knowledge-settings',
+			$plugin_url . 'assets/js/knowledge-settings.js',
+			[ 'jquery', 'jquery-ui-sortable' ],
+			'1.0.0',
+			true
+		);
+		wp_localize_script( 'knowledge-settings', 'knowledgeSettings', [
+			'ajaxurl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( 'knowledge_check_nonce' ),
+		] );
 	}
 
 	public function render_ai_settings(): void {
-		if ( isset( $_POST['knowledge_ollama_save'] ) && check_admin_referer( 'knowledge_ai_save' ) ) {
-			update_option( 'knowledge_ollama_url', sanitize_text_field( $_POST['knowledge_ollama_url'] ) );
-			update_option( 'knowledge_ollama_model', sanitize_text_field( $_POST['knowledge_ollama_model'] ) );
-			echo '<div class="notice notice-success"><p>Settings saved.</p></div>';
+		// Handle Save
+		if ( isset( $_POST['knowledge_ai_save'] ) && check_admin_referer( 'knowledge_ai_save' ) ) {
+			if ( isset( $_POST['providers'] ) && is_array( $_POST['providers'] ) ) {
+				// Sanitize and save
+				$providers = [];
+				foreach ( $_POST['providers'] as $p ) {
+					$providers[] = [
+						'id'      => sanitize_text_field( $p['id'] ),
+						'type'    => sanitize_text_field( $p['type'] ),
+						'name'    => sanitize_text_field( $p['name'] ),
+						'enabled' => isset( $p['enabled'] ),
+						'config'  => [
+							'url'     => esc_url_raw( $p['config']['url'] ?? '' ),
+							'model'   => sanitize_text_field( $p['config']['model'] ?? '' ),
+							'api_key' => sanitize_text_field( $p['config']['api_key'] ?? '' ),
+						]
+					];
+				}
+				update_option( 'knowledge_ai_providers', $providers );
+				echo '<div class="notice notice-success"><p>Providers saved.</p></div>';
+			} else {
+				// If empty list sent (all removed)
+				update_option( 'knowledge_ai_providers', [] );
+				echo '<div class="notice notice-success"><p>Providers saved (empty).</p></div>';
+			}
 		}
 
 		// Handle Index Rebuild
@@ -146,62 +225,138 @@ class AdminMenuRegistrar {
 			echo '<div class="notice notice-success"><p>Scheduled embedding generation for ' . intval( $count ) . ' versions. This process runs in the background.</p></div>';
 		}
 
-		$url   = get_option( 'knowledge_ollama_url', 'http://192.168.5.183:11434' );
-		$model = get_option( 'knowledge_ollama_model', 'llama3' );
+		// Load Providers
+		$providers = get_option( 'knowledge_ai_providers', [] );
 		
-		// Check Connection
-		$client = new \Knowledge\Service\AI\OllamaClient( $url, $model );
-		$is_connected = $client->is_available();
-		$status_icon  = $is_connected ? '✅ Connected' : '❌ Not Connected';
-		$models       = $is_connected ? $client->get_models() : [];
+		// Migration if empty
+		if ( empty( $providers ) ) {
+			$legacy_url = get_option( 'knowledge_ollama_url', '' );
+			if ( ! empty( $legacy_url ) ) {
+				$providers[] = [
+					'id'      => 'legacy_' . uniqid(),
+					'type'    => 'ollama',
+					'name'    => 'Legacy Ollama',
+					'enabled' => true,
+					'config'  => [
+						'url'   => $legacy_url,
+						'model' => get_option( 'knowledge_ollama_model', 'llama3' ),
+					]
+				];
+			}
+		}
 
 		echo '<div class="wrap">';
-		echo '<h1>AI Configuration (Ollama)</h1>';
-		echo '<p>Configure the connection to your local Ollama instance.</p>';
+		echo '<style>
+			.knowledge-provider-row {
+				padding: 10px;
+				margin-bottom: 10px;
+				background: #fff;
+				border: 1px solid #ccd0d4;
+				border-right: 5px solid #ccd0d4; /* Default to grey, becomes color on status */
+				transition: border-right-color 0.5s ease;
+			}
+			.knowledge-provider-row.status-connected {
+				border-right-color: #46b450;
+			}
+			.knowledge-provider-row.status-disconnected {
+				border-right-color: #dc3232;
+			}
+			.knowledge-provider-row.status-checking {
+				border-right-color: #f0ad4e;
+			}
+			.knowledge-provider-form {
+				border-right: 5px solid #ccd0d4;
+				transition: border-right-color 0.5s ease;
+			}
+			.knowledge-provider-form.status-connected {
+				border-right-color: #46b450;
+			}
+			.knowledge-provider-form.status-disconnected {
+				border-right-color: #dc3232;
+			}
+			.knowledge-provider-form.status-checking {
+				border-right-color: #f0ad4e;
+			}
+		</style>';
+		echo '<h1>AI Configuration</h1>';
+		echo '<p>Configure the AI providers for your knowledge base. Drag and drop to reorder priority.</p>';
 		
-		echo '<div class="card" style="max-width: 600px; padding: 1em; margin-bottom: 20px;">';
-		echo '<h3>Connection Status: ' . esc_html( $status_icon ) . '</h3>';
-		echo '</div>';
-
 		echo '<form method="post" action="">';
 		wp_nonce_field( 'knowledge_ai_save' );
+		
+		echo '<div id="knowledge-providers-list" style="max-width: 800px;">';
+		if ( ! empty( $providers ) ) {
+			foreach ( $providers as $index => $p ) {
+				$type = esc_html( $p['type'] );
+				$name = esc_html( $p['name'] );
+				$url = esc_attr( $p['config']['url'] ?? '' );
+				$model = esc_attr( $p['config']['model'] ?? '' );
+				$apiKey = esc_attr( $p['config']['api_key'] ?? '' );
+				$id = esc_attr( $p['id'] );
+				
+				// Render Row
+				echo '<div class="knowledge-provider-row card" data-id="' . $id . '">';
+				echo '<div class="knowledge-provider-header" style="display: flex; justify-content: space-between; align-items: center;">';
+				echo '<div style="display: flex; align-items: center; gap: 10px;">';
+				echo '<span class="dashicons dashicons-move knowledge-provider-handle" style="cursor: move; color: #aaa;"></span>';
+				echo '<strong>' . $name . '</strong> <span class="badge" style="background: #f0f0f1; padding: 2px 6px; border-radius: 4px; font-size: 11px;">' . $type . '</span>';
+				echo '</div>';
+				echo '<div>';
+				echo '<button class="button button-small knowledge-edit-provider" style="margin-right: 5px;">Edit</button>';
+				echo '<button class="button button-small knowledge-remove-provider" style="color: #b32d2e; border-color: #b32d2e;">Remove</button>';
+				echo '</div>';
+				echo '</div>'; // header
+				
+				echo '<div class="knowledge-provider-details" style="margin-top: 10px; padding-left: 30px; font-size: 13px; color: #666;">';
+				if ( $p['type'] === 'ollama' ) {
+					echo 'URL: ' . $url . ' | Model: ' . $model;
+				} else {
+					echo 'Model: ' . $model;
+				}
+				echo '</div>';
+				
+				// Hidden inputs
+				echo '<input type="hidden" name="providers[' . $index . '][id]" value="' . $id . '">';
+				echo '<input type="hidden" name="providers[' . $index . '][type]" value="' . $p['type'] . '">';
+				echo '<input type="hidden" name="providers[' . $index . '][name]" value="' . $p['name'] . '">';
+				echo '<input type="hidden" name="providers[' . $index . '][config][url]" value="' . $url . '">';
+				echo '<input type="hidden" name="providers[' . $index . '][config][model]" value="' . $model . '">';
+				echo '<input type="hidden" name="providers[' . $index . '][config][api_key]" value="' . $apiKey . '">';
+				echo '<input type="hidden" name="providers[' . $index . '][enabled]" value="1">';
+
+				echo '</div>'; // row
+			}
+		}
+		echo '</div>'; // list
+		
+		// Add Button
+		echo '<div style="margin-top: 20px;">';
+		echo '<button id="knowledge-add-provider-btn" class="button button-secondary">Add Provider</button>';
+		echo '</div>';
+		
+		// Add Form (Hidden)
+		echo '<div id="knowledge-add-provider-form" class="card knowledge-provider-form" style="display: none; max-width: 600px; padding: 15px; margin-top: 20px; border-left: 4px solid #2271b1;">';
+		echo '<h3 id="knowledge-provider-form-title">Add New Provider</h3>';
+		echo '<input type="hidden" id="editing_provider_id" value="">';
 		echo '<table class="form-table">';
 		
-		echo '<tr><th scope="row"><label for="ollama_url">Ollama URL</label></th>';
-		echo '<td><input name="knowledge_ollama_url" type="url" id="ollama_url" value="' . esc_attr( $url ) . '" class="regular-text" required>';
-		echo '<p class="description">Default: http://192.168.5.183:11434</p></td></tr>';
-
-		echo '<tr><th scope="row"><label for="ollama_model">Model Name</label></th>';
-		echo '<td>';
-		
-		if ( ! empty( $models ) ) {
-			echo '<select name="knowledge_ollama_model" id="ollama_model" class="regular-text">';
-			$found = false;
-			foreach ( $models as $m ) {
-				$selected = ( $model === $m );
-				if ( $selected ) {
-					$found = true;
-				}
-				echo '<option value="' . esc_attr( $m ) . '" ' . selected( $model, $m, false ) . '>' . esc_html( $m ) . '</option>';
-			}
-			// Preserve current value if not in list
-			if ( ! $found && ! empty( $model ) ) {
-				echo '<option value="' . esc_attr( $model ) . '" selected>' . esc_html( $model ) . ' (Current)</option>';
-			}
-			echo '</select>';
-			echo '<p class="description">Select a model from your Ollama library.</p>';
-		} else {
-			echo '<input name="knowledge_ollama_model" type="text" id="ollama_model" value="' . esc_attr( $model ) . '" class="regular-text" required>';
-			echo '<p class="description">e.g., llama3, mistral, nomic-embed-text</p>';
-		}
-		
-		echo '</td></tr>';
+		echo '<tr><th>Type</th><td><select id="new_provider_type" class="regular-text"><option value="ollama">Ollama</option><option value="openai">OpenAI</option></select></td></tr>';
+		echo '<tr><th>Name</th><td><input type="text" id="new_provider_name" class="regular-text" placeholder="e.g. Local Server"></td></tr>';
+		echo '<tr id="field-row-url"><th>URL</th><td><input type="url" id="new_provider_url" class="regular-text" placeholder="http://127.0.0.1:11434"> <span class="knowledge-check-indicator" style="display:none; margin-left: 5px; color: #856404;"><span class="dashicons dashicons-update spin"></span> Checking...</span></td></tr>';
+		echo '<tr id="field-row-key" style="display:none;"><th>API Key</th><td><input type="password" id="new_provider_key" class="regular-text"> <span class="knowledge-check-indicator" style="display:none; margin-left: 5px; color: #856404;"><span class="dashicons dashicons-update spin"></span> Checking...</span></td></tr>';
+		echo '<tr><th>Model</th><td>
+			<input type="text" id="new_provider_model" class="regular-text" list="knowledge_provider_models" placeholder="e.g. llama3" autocomplete="off">
+			<datalist id="knowledge_provider_models"></datalist>
+			</td></tr>';
 		
 		echo '</table>';
-		echo submit_button( 'Save Settings', 'primary', 'knowledge_ollama_save' );
-		echo '</form>';
+		echo '<div style="margin-top: 10px;"><button id="knowledge-save-new-provider" class="button button-primary">Add to List</button></div>';
 		echo '</div>';
-
+		
+		echo '<hr style="margin: 30px 0;">';
+		echo submit_button( 'Save Changes', 'primary', 'knowledge_ai_save' );
+		echo '</form>';
+		
 		// Index Management Section
 		echo '<div class="card" style="max-width: 600px; padding: 1em; margin-bottom: 20px;">';
 		echo '<h3>Knowledge Index</h3>';
@@ -211,6 +366,8 @@ class AdminMenuRegistrar {
 		echo submit_button( 'Rebuild Knowledge Index', 'secondary', 'knowledge_rebuild_index' );
 		echo '</form>';
 		echo '</div>';
+		
+		echo '</div>'; // wrap
 	}
 
 	public function render_ingestion(): void {
