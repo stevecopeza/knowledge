@@ -24,7 +24,7 @@ Unlike standard note-taking apps or "Second Brain" tools, this system prioritize
 *   **Epistemic Forks**: "Rebase" reality. Create your own version of an article while keeping a link to the original.
 *   **Local AI / RAG**: Run RAG (Retrieval Augmented Generation) queries against your data using local models (Ollama) or cloud providers (OpenAI).
 *   **Multi-Provider AI**: Configure failover chains for AI providers (e.g., try Local Ollama first, failover to OpenAI).
-*   **Elementor Integration**: Dedicated "Knowledge Archive" widget for visual page building with full design control.
+*   **Elementor Integration**: Dedicated "Knowledge Archive" and "Knowledge Search" widgets for visual page building with full design control.
 *   **Mobile Optimized**: Fully responsive Admin UI and Frontend for touch devices.
 *   **Filesystem Backed**: All content and media are stored as plain files. The database is just an index.
 

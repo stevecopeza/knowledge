@@ -41,10 +41,12 @@ class ElementorIntegration {
 	 * @param \Elementor\Widgets_Manager $widgets_manager
 	 */
 	public function register_widgets( $widgets_manager ): void {
-		// Require the widget class file
+		// Require the widget class files
 		require_once __DIR__ . '/Widgets/KnowledgeArchiveWidget.php';
+		require_once __DIR__ . '/Widgets/KnowledgeSearchWidget.php';
 
-		// Register the widget
+		// Register the widgets
 		$widgets_manager->register( new Widgets\KnowledgeArchiveWidget() );
+		$widgets_manager->register( new Widgets\KnowledgeSearchWidget() );
 	}
 }

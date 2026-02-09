@@ -149,6 +149,17 @@ This document tracks the implementation progress of the Knowledge Plugin.
     - [x] **Card Interactions**: Implemented full-card hover effects with white overlay, summary, and tags.
     - [x] **Mobile Optimization**: refined touch interactions for cards (tap to reveal summary) and improved responsive layout.
     - [x] **Hover Delay**: Added 1s delay to desktop hover to prevent jarring scrolling.
+    - [x] **Elementor Widgets**:
+        - [x] **Archive Widget**: Added numeric pagination, load more, and infinite scroll.
+        - [x] **Search Widget**: 
+            - [x] Implemented dedicated search widget with AI/Chat mode support.
+            - [x] Added Archive-style display controls to Standard Search mode.
+            - [x] Added "Results Divider" with styling controls (position: below results).
+            - [x] Added "Show Other Content" toggle to hide/show page content during search.
+    - [x] **Re-check Capability**
+        - [x] Add "Re-check" button to hover state (Elementor toggle) for Search Widget.
+        - [x] Add "Re-check" button to hover state (Elementor toggle) for Archive Widget.
+        - [x] Implement priority queue handling (move to top if exists, else add).
 
 ## 🟢 Phase 9: Documentation & Release Prep (Next)
 **Goal:** Finalize documentation and prepare for v1.0 release.

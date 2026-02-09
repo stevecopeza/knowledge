@@ -15,6 +15,7 @@ class ChatService {
 
 	public function ask( string $question, string $mode = 'combined_prioritised' ): array {
 		// Embeddings always use primary provider
+		$source_uuids = [];
 		try {
 			// 1. Embed Question (if needed)
 			$context_text = "";
@@ -36,7 +37,11 @@ class ChatService {
 					$context_text = "Context:\n";
 					foreach ( $results as $r ) {
 						$context_text .= "---\n" . $r['text'] . "\n";
+						if ( ! empty( $r['version_uuid'] ) ) {
+							$source_uuids[] = $r['version_uuid'];
+						}
 					}
+					$source_uuids = array_values( array_unique( $source_uuids ) );
 				}
 			}
 		} catch ( \Exception $e ) {
@@ -106,6 +111,7 @@ EOT;
 					'provider_id' => $result['provider']->get_id(),
 					'provider_name' => $result['provider']->get_name(),
 					'model' => $result['provider']->get_model(),
+					'sources' => $source_uuids,
 				]
 			];
 		} catch ( \Exception $e ) {

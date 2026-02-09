@@ -12,6 +12,8 @@ class FrontendRenderer {
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'wp_ajax_knowledge_load_more', [ $this, 'ajax_load_more' ] );
 		add_action( 'wp_ajax_nopriv_knowledge_load_more', [ $this, 'ajax_load_more' ] );
+		add_action( 'wp_ajax_knowledge_search_results', [ $this, 'ajax_search_results' ] );
+		add_action( 'wp_ajax_nopriv_knowledge_search_results', [ $this, 'ajax_search_results' ] );
 	}
 
 	public function enqueue_assets(): void {
@@ -27,8 +29,10 @@ class FrontendRenderer {
 		);
 
 		wp_localize_script( 'knowledge-frontend-js', 'knowledge_vars', [
-			'ajax_url' => admin_url( 'admin-ajax.php' ),
-			'nonce'    => wp_create_nonce( 'knowledge_load_more' ),
+			'ajax_url'   => admin_url( 'admin-ajax.php' ),
+			'nonce'      => wp_create_nonce( 'knowledge_load_more' ),
+			'chat_nonce' => wp_create_nonce( 'knowledge_chat_nonce' ),
+			'recheck_nonce' => wp_create_nonce( 'knowledge_recheck_nonce' ),
 		] );
 		
 		$css = "
@@ -369,6 +373,40 @@ class FrontendRenderer {
 				padding: 20px;
 				font-style: italic;
 			}
+
+			.knowledge-recheck-btn {
+				position: absolute;
+				bottom: 12px;
+				right: 12px;
+				z-index: 25;
+				opacity: 0;
+				transition: opacity 0.3s ease;
+				cursor: pointer;
+				border: none;
+				background: #f3f4f6;
+				padding: 6px 12px;
+				border-radius: 4px;
+				font-size: 12px;
+				font-weight: 500;
+				color: #374151;
+				box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			}
+			.knowledge-card:hover .knowledge-recheck-btn {
+				opacity: 1;
+			}
+			.knowledge-recheck-btn:hover {
+				background: #e5e7eb;
+				color: #111827;
+			}
+			.knowledge-recheck-btn:disabled {
+				opacity: 0.6;
+				cursor: not-allowed;
+			}
+			@media (hover: hover) {
+				.knowledge-card:hover .knowledge-recheck-btn {
+					transition-delay: 1s;
+				}
+			}
 		";
 		
 		wp_add_inline_style( 'knowledge-frontend', $css );
@@ -590,6 +628,25 @@ class FrontendRenderer {
 			);
 		}
 
+		$recheck_btn_html = '';
+		$show_recheck = false;
+		if ( isset( $options['show_recheck_button'] ) ) {
+			if ( $options['show_recheck_button'] === 'yes' || $options['show_recheck_button'] === true ) {
+				$show_recheck = true;
+			}
+		}
+
+		if ( $show_recheck ) {
+			// Get Source URL from post meta
+			$source_url = get_post_meta( $post_id, '_kb_source_url', true );
+			if ( ! empty( $source_url ) ) {
+				$recheck_btn_html = sprintf(
+					'<button class="knowledge-recheck-btn" data-url="%s">Re-check</button>',
+					esc_attr( $source_url )
+				);
+			}
+		}
+
 		return sprintf(
 			'<article class="knowledge-card">
 				%s
@@ -609,6 +666,7 @@ class FrontendRenderer {
 					<div class="knowledge-card-summary">%s</div>
 					<div class="knowledge-card-hover-tags">%s</div>
 				</a>
+				%s
 			</article>',
 			$floating_badges_html,
 			$img_html,
@@ -618,7 +676,8 @@ class FrontendRenderer {
 			$footer_html,
 			get_permalink( $post ),
 			esc_html( $summary ),
-			$hover_badges_html
+			$hover_badges_html,
+			$recheck_btn_html
 		);
 	}
 
@@ -804,6 +863,7 @@ class FrontendRenderer {
 			'show_badges'       => ! empty( $options['show_badges'] ) && filter_var( $options['show_badges'], FILTER_VALIDATE_BOOLEAN ),
 			'show_meta'         => ! empty( $options['show_meta'] ) && filter_var( $options['show_meta'], FILTER_VALIDATE_BOOLEAN ),
 			'show_avatar'       => ! empty( $options['show_avatar'] ) && filter_var( $options['show_avatar'], FILTER_VALIDATE_BOOLEAN ),
+			'show_recheck_button' => ! empty( $options['show_recheck_button'] ) && filter_var( $options['show_recheck_button'], FILTER_VALIDATE_BOOLEAN ),
 		];
 
 		// Taxonomy Filters
@@ -846,6 +906,84 @@ class FrontendRenderer {
 
 		wp_send_json_success( [
 			'html'        => $html,
+			'max_pages'   => $query->max_num_pages,
+			'found_posts' => $query->found_posts,
+		] );
+	}
+
+	public function ajax_search_results(): void {
+		// Use the same nonce as load more for simplicity
+		if ( ! check_ajax_referer( 'knowledge_load_more', 'nonce', false ) ) {
+			wp_send_json_error( 'Invalid nonce' );
+		}
+
+		$search = isset( $_POST['search'] ) ? sanitize_text_field( $_POST['search'] ) : '';
+		if ( empty( $search ) ) {
+			wp_send_json_error( 'Empty search query' );
+		}
+
+		$page = isset( $_POST['page'] ) ? intval( $_POST['page'] ) : 1;
+		$posts_per_page = 12;
+
+		$query_args = [
+			'post_type'      => 'kb_article',
+			'post_status'    => 'publish',
+			's'              => $search,
+			'paged'          => $page,
+			'posts_per_page' => $posts_per_page,
+		];
+
+		// Handle Options
+		$options = isset( $_POST['options'] ) ? $_POST['options'] : [];
+		if ( is_string( $options ) ) {
+			$decoded = json_decode( stripslashes( $options ), true );
+			if ( is_array( $decoded ) ) {
+				$options = $decoded;
+			}
+		}
+
+		// Sanitize options to ensure all keys exist
+		$safe_options = [
+			'show_image'        => ! empty( $options['show_image'] ) && filter_var( $options['show_image'], FILTER_VALIDATE_BOOLEAN ),
+			'title_length'      => isset( $options['title_length'] ) ? intval( $options['title_length'] ) : 0,
+			'show_summary'      => ! empty( $options['show_summary'] ) && filter_var( $options['show_summary'], FILTER_VALIDATE_BOOLEAN ),
+			'summary_length'    => isset( $options['summary_length'] ) ? intval( $options['summary_length'] ) : 20,
+			'show_category'     => ! empty( $options['show_category'] ) && filter_var( $options['show_category'], FILTER_VALIDATE_BOOLEAN ),
+			'category_position' => isset( $options['category_position'] ) ? sanitize_text_field( $options['category_position'] ) : 'inline',
+			'show_badges'       => ! empty( $options['show_badges'] ) && filter_var( $options['show_badges'], FILTER_VALIDATE_BOOLEAN ),
+			'show_meta'         => ! empty( $options['show_meta'] ) && filter_var( $options['show_meta'], FILTER_VALIDATE_BOOLEAN ),
+			'show_avatar'       => ! empty( $options['show_avatar'] ) && filter_var( $options['show_avatar'], FILTER_VALIDATE_BOOLEAN ),
+			'show_recheck_button' => ! empty( $options['show_recheck_button'] ) && filter_var( $options['show_recheck_button'], FILTER_VALIDATE_BOOLEAN ),
+		];
+
+		// Filter by Categories if provided
+		if ( ! empty( $_POST['categories'] ) ) {
+			$categories = json_decode( stripslashes( $_POST['categories'] ), true );
+			if ( ! empty( $categories ) ) {
+				$query_args['tax_query'] = [
+					[
+						'taxonomy' => 'kb_category',
+						'field'    => 'term_id',
+						'terms'    => $categories,
+					],
+				];
+			}
+		}
+
+		$query = new \WP_Query( $query_args );
+		$html = '';
+
+		if ( $query->have_posts() ) {
+			while ( $query->have_posts() ) {
+				$query->the_post();
+				$html .= self::render_card( get_post(), $safe_options );
+			}
+		} else {
+			$html = '<p class="knowledge-no-results">' . sprintf( __( 'No results found for "%s".', 'knowledge' ), esc_html( $search ) ) . '</p>';
+		}
+
+		wp_send_json_success( [
+			'cards_html'  => $html,
 			'max_pages'   => $query->max_num_pages,
 			'found_posts' => $query->found_posts,
 		] );

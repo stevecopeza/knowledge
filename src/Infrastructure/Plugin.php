@@ -67,12 +67,28 @@ class Plugin {
 		// Register Batch Import Queue Processor
 		add_action( 'knowledge_process_import_queue', [ \Knowledge\Service\Ingestion\BatchImportService::class, 'process_queue' ] );
 
+		// Register Watchdog for Batch Imports
+		add_filter( 'cron_schedules', function( $schedules ) {
+			$schedules['every_5_minutes'] = [
+				'interval' => 300,
+				'display'  => __( 'Every 5 Minutes' ),
+			];
+			return $schedules;
+		} );
+		add_action( 'knowledge_import_watchdog', [ \Knowledge\Service\Ingestion\BatchImportService::class, 'watchdog' ] );
+		if ( ! wp_next_scheduled( 'knowledge_import_watchdog' ) ) {
+			wp_schedule_event( time(), 'every_5_minutes', 'knowledge_import_watchdog' );
+		}
+
 		// Register AI Embedding Job
 		add_action( 'kb_version_created', [ \Knowledge\Service\AI\EmbeddingJob::class, 'schedule' ], 10, 4 );
 		add_action( 'knowledge_generate_embeddings', [ \Knowledge\Service\AI\EmbeddingJob::class, 'process' ] );
 
 		// Register AI Analysis Job
 		add_action( 'knowledge_ai_analyze_article', [ \Knowledge\Service\AI\AIAnalysisService::class, 'handle_analysis_job' ], 10, 2 );
+
+		// Register Recheck AJAX Handler
+		add_action( 'wp_ajax_knowledge_recheck_article', [ \Knowledge\Service\Ingestion\RecheckService::class, 'handle_ajax' ] );
 
 		// Initialize Filesystem Security (Runtime check)
 		add_action( 'init', [ FilesystemInitializer::class, 'ensure_security' ] );

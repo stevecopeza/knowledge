@@ -50,6 +50,7 @@ class KnowledgeArchiveWidget extends Widget_Base {
 		$this->register_query_controls();
 		$this->register_layout_controls();
 		$this->register_style_controls();
+		$this->register_style_recheck_controls();
 	}
 
 	protected function register_query_controls() {
@@ -317,6 +318,18 @@ class KnowledgeArchiveWidget extends Widget_Base {
 				'condition' => [
 					'pagination_type' => [ 'load_more', 'infinite_scroll' ],
 				],
+			]
+		);
+
+		$this->add_control(
+			'show_recheck_button',
+			[
+				'label'     => __( 'Show Re-check Button', 'knowledge' ),
+				'type'      => Controls_Manager::SWITCHER,
+				'label_on'  => __( 'Show', 'knowledge' ),
+				'label_off' => __( 'Hide', 'knowledge' ),
+				'default'   => 'yes',
+				'description' => __( 'Display a "Re-check" button in the card hover state to request article update.', 'knowledge' ),
 			]
 		);
 
@@ -864,6 +877,117 @@ class KnowledgeArchiveWidget extends Widget_Base {
 		$this->end_controls_section();
 	}
 
+	protected function register_style_recheck_controls() {
+		$this->start_controls_section(
+			'section_style_recheck',
+			[
+				'label'     => __( 'Re-check Button', 'knowledge' ),
+				'tab'       => Controls_Manager::TAB_STYLE,
+				'condition' => [
+					'show_recheck_button' => 'yes',
+				],
+			]
+		);
+
+		$this->add_group_control(
+			Group_Control_Typography::get_type(),
+			[
+				'name'     => 'recheck_typography',
+				'selector' => '{{WRAPPER}} .knowledge-recheck-btn',
+			]
+		);
+
+		$this->add_control(
+			'recheck_color',
+			[
+				'label'     => __( 'Color', 'knowledge' ),
+				'type'      => Controls_Manager::COLOR,
+				'selectors' => [
+					'{{WRAPPER}} .knowledge-recheck-btn' => 'color: {{VALUE}}',
+				],
+			]
+		);
+
+		$this->add_control(
+			'recheck_bg_color',
+			[
+				'label'     => __( 'Background Color', 'knowledge' ),
+				'type'      => Controls_Manager::COLOR,
+				'selectors' => [
+					'{{WRAPPER}} .knowledge-recheck-btn' => 'background-color: {{VALUE}}',
+				],
+			]
+		);
+
+		$this->add_control(
+			'recheck_hover_color',
+			[
+				'label'     => __( 'Hover Color', 'knowledge' ),
+				'type'      => Controls_Manager::COLOR,
+				'selectors' => [
+					'{{WRAPPER}} .knowledge-recheck-btn:hover' => 'color: {{VALUE}}',
+				],
+			]
+		);
+
+		$this->add_control(
+			'recheck_hover_bg_color',
+			[
+				'label'     => __( 'Hover Background Color', 'knowledge' ),
+				'type'      => Controls_Manager::COLOR,
+				'selectors' => [
+					'{{WRAPPER}} .knowledge-recheck-btn:hover' => 'background-color: {{VALUE}}',
+				],
+			]
+		);
+
+		$this->add_group_control(
+			Group_Control_Border::get_type(),
+			[
+				'name'     => 'recheck_border',
+				'selector' => '{{WRAPPER}} .knowledge-recheck-btn',
+			]
+		);
+
+		$this->add_control(
+			'recheck_border_radius',
+			[
+				'label'      => __( 'Border Radius', 'knowledge' ),
+				'type'       => Controls_Manager::DIMENSIONS,
+				'size_units' => [ 'px', '%', 'em' ],
+				'selectors'  => [
+					'{{WRAPPER}} .knowledge-recheck-btn' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+				],
+			]
+		);
+
+		$this->add_responsive_control(
+			'recheck_padding',
+			[
+				'label'      => __( 'Padding', 'knowledge' ),
+				'type'       => Controls_Manager::DIMENSIONS,
+				'size_units' => [ 'px', '%', 'em' ],
+				'selectors'  => [
+					'{{WRAPPER}} .knowledge-recheck-btn' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+				],
+			]
+		);
+
+		$this->add_responsive_control(
+			'recheck_margin',
+			[
+				'label'      => __( 'Margin', 'knowledge' ),
+				'type'       => Controls_Manager::DIMENSIONS,
+				'size_units' => [ 'px', '%', 'em' ],
+				'selectors'  => [
+					'{{WRAPPER}} .knowledge-recheck-btn' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+				],
+			]
+		);
+
+		$this->end_controls_section();
+	}
+
 	/**
 	 * Render widget output on the frontend.
 	 */
@@ -906,6 +1030,7 @@ class KnowledgeArchiveWidget extends Widget_Base {
 				'show_badges'       => 'yes' === $settings['show_badges'],
 				'show_meta'         => 'yes' === $settings['show_meta'],
 				'show_avatar'       => 'yes' === $settings['show_avatar'],
+				'show_recheck_button' => 'yes' === $settings['show_recheck_button'],
 			];
 			
 			// Wrapper Attributes

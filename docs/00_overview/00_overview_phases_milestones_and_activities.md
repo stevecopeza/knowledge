@@ -248,19 +248,53 @@ The intent is to enable steady progress without architectural shortcuts.
 
 **Goal:** Prepare for real users.
 
-### Milestone 8.1 — Admin UI Refinement
+### Milestone 8.1 — Admin & Ingestion Refinement
 
 **Activities:**
 - Dashboard implementation
-- Performance tuning
+- Bulk failure management (Retry/Delete)
+- Ingestion robustness (timeouts, headers)
+- Featured image scoring
 
 ---
 
-### Milestone 8.2 — Upgrade Testing
+### Milestone 8.2 — Frontend Polish (Elementor)
+
+**Activities:**
+- Elementor Archive Widget (Pagination, Endless Scroll, Re-check)
+- Elementor Search Widget (AI/Chat Integration, Re-check, Display Controls)
+- Mobile/Touch interaction refinements
+- Card hover effects and delays
+
+---
+
+### Milestone 8.3 — Upgrade Testing
 
 **Activities:**
 - Migration testing
 - Skipped-version scenarios
+
+---
+
+## Phase 9 — Documentation & Release Prep
+
+**Goal:** Finalize documentation and prepare for v1.0 release.
+
+### Milestone 9.1 — Documentation
+
+**Activities:**
+- Update Mobile/Touch design docs
+- Document Elementor Widget usage
+- Finalize Installation Guide
+
+---
+
+### Milestone 9.2 — Release
+
+**Activities:**
+- Version Bump
+- Create release package
+
 
 ---
 

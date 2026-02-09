@@ -17,6 +17,34 @@ class BatchImportService {
 		}
 	}
 
+	public static function watchdog(): void {
+		// Check if any jobs are processing
+		$jobs = get_posts( [
+			'post_type'      => 'kb_import_job',
+			'post_status'    => 'processing',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+		] );
+
+		// If no processing jobs, check pending
+		if ( empty( $jobs ) ) {
+			$jobs = get_posts( [
+				'post_type'      => 'kb_import_job',
+				'post_status'    => 'pending',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+			] );
+		}
+
+		if ( ! empty( $jobs ) ) {
+			// If jobs exist but queue processor is NOT scheduled, restart it
+			if ( ! wp_next_scheduled( 'knowledge_process_import_queue' ) ) {
+				wp_schedule_single_event( time(), 'knowledge_process_import_queue' );
+				error_log( 'BatchImportService Watchdog: Restarted stalled import queue.' );
+			}
+		}
+	}
+
 	public function create_job( array $urls, int $user_id ): int {
 		// 1. Deduplicate input list (internal)
 		$urls = array_values( array_unique( $urls ) );
@@ -91,15 +119,27 @@ class BatchImportService {
 
 
 	public function process_next_batch( int $limit = 10 ): int {
-		// Find oldest pending/processing job
+		// Find oldest processing job first
 		$jobs = get_posts( [
 			'post_type'      => 'kb_import_job',
-			'post_status'    => [ 'pending', 'processing' ],
+			'post_status'    => 'processing',
 			'posts_per_page' => 1,
 			'orderby'        => 'ID',
 			'order'          => 'ASC',
 			'fields'         => 'ids',
 		] );
+
+		// If no processing job, find pending
+		if ( empty( $jobs ) ) {
+			$jobs = get_posts( [
+				'post_type'      => 'kb_import_job',
+				'post_status'    => 'pending',
+				'posts_per_page' => 1,
+				'orderby'        => 'ID',
+				'order'          => 'ASC',
+				'fields'         => 'ids',
+			] );
+		}
 
 		if ( empty( $jobs ) ) {
 			return 0;

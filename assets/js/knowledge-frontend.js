@@ -156,10 +156,257 @@
         }
     }
 
+    class KnowledgeSearch {
+        constructor(container) {
+            this.$container = $(container);
+            this.$form = this.$container.find('form');
+            this.$input = this.$form.find('input[type="search"]');
+            this.$button = this.$form.find('button[type="submit"]');
+            this.$response = this.$container.find('.knowledge-ai-response');
+            this.$content = this.$response.find('.knowledge-ai-content');
+            this.$provenance = this.$response.find('.knowledge-ai-provenance');
+            this.$results = this.$response.find('.knowledge-ai-results');
+            
+            this.mode = this.$container.data('knowledge-search-mode');
+            this.aiMode = this.$container.data('ai-mode') || 'combined';
+            this.categories = this.$container.data('categories') || [];
+            this.displayOptions = this.$container.data('display-options') || {};
+            
+            this.showOtherContent = this.$container.data('show-other-content') === 'yes';
+            this.otherContentSelector = this.$container.data('other-content-selector') || '';
+
+            if (this.mode === 'ai') {
+                this.initAI();
+            } else if (this.mode === 'standard-ajax') {
+                this.initStandard();
+            }
+
+            // Handle clearing search
+            this.$input.on('input search', () => {
+                if (this.$input.val().trim() === '') {
+                    this.resetSearch();
+                }
+            });
+        }
+
+        resetSearch() {
+            this.$results.empty();
+            if (this.$content.length) this.$content.empty();
+            if (this.$provenance.length) this.$provenance.empty();
+            this.$response.slideUp();
+            this.toggleOtherContent(true);
+        }
+
+        toggleOtherContent(show) {
+            if (this.showOtherContent) return; // If setting is "Show", we don't hide anything
+            
+            if (!this.otherContentSelector) return;
+
+            if (show) {
+                $(this.otherContentSelector).show();
+            } else {
+                $(this.otherContentSelector).hide();
+            }
+        }
+
+        initAI() {
+            this.$form.on('submit', (e) => {
+                e.preventDefault();
+                this.performSearch();
+            });
+        }
+
+        initStandard() {
+            this.$form.on('submit', (e) => {
+                e.preventDefault();
+                this.performStandardSearch();
+            });
+        }
+
+        performSearch() {
+            const query = this.$input.val().trim();
+            if (!query) return;
+
+            this.setLoading(true);
+            this.$response.slideDown();
+            this.$content.html('<p>Thinking...</p>');
+            this.$provenance.empty();
+            this.$results.empty();
+            this.$response.find('.knowledge-results-divider').hide();
+
+            $.ajax({
+                url: knowledge_vars.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'knowledge_chat',
+                    nonce: knowledge_vars.chat_nonce,
+                    question: query,
+                    mode: this.aiMode,
+                    options: JSON.stringify(this.displayOptions)
+                },
+                success: (response) => {
+                    if (response.success) {
+                        this.$content.html(this.formatAnswer(response.data.answer));
+                        if (response.data.provenance) {
+                            this.$provenance.html(this.formatProvenance(response.data.provenance));
+                        }
+                        if (response.data.cards_html) {
+                            this.$results.html(response.data.cards_html);
+                            this.$response.find('.knowledge-results-divider').show();
+                        }
+                        this.toggleOtherContent(false);
+                    } else {
+                        this.$content.html('<span class="error">Error: ' + response.data + '</span>');
+                    }
+                },
+                error: (xhr, status, error) => {
+                     this.$content.html('<span class="error">Connection Error: ' + error + '</span>');
+                },
+                complete: () => {
+                    this.setLoading(false);
+                }
+            });
+        }
+
+        performStandardSearch() {
+            const query = this.$input.val().trim();
+            if (!query) return;
+
+            this.setLoading(true);
+            this.$response.slideDown();
+            this.$results.empty();
+            // In standard mode, we might not have content/provenance containers, but clearing them is safe if they don't exist
+            if (this.$content.length) this.$content.empty();
+            if (this.$provenance.length) this.$provenance.empty();
+            this.$response.find('.knowledge-results-divider').hide();
+
+            $.ajax({
+                url: knowledge_vars.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'knowledge_search_results',
+                    nonce: knowledge_vars.nonce, // Use the standard nonce
+                    search: query,
+                    options: this.displayOptions
+                },
+                success: (response) => {
+                    if (response.success) {
+                        if (response.data.cards_html) {
+                            this.$results.html(response.data.cards_html);
+                            this.$response.find('.knowledge-results-divider').show();
+                        } else {
+                            this.$results.html('<p>No results found.</p>');
+                        }
+                        this.toggleOtherContent(false);
+                    } else {
+                        this.$results.html('<span class="error">Error: ' + (response.data || 'Unknown error') + '</span>');
+                    }
+                },
+                error: (xhr, status, error) => {
+                     this.$results.html('<span class="error">Connection Error: ' + error + '</span>');
+                },
+                complete: () => {
+                    this.setLoading(false);
+                }
+            });
+        }
+
+        setLoading(loading) {
+            this.$button.prop('disabled', loading);
+            if (loading) {
+                this.$button.addClass('loading');
+            } else {
+                this.$button.removeClass('loading');
+            }
+        }
+        
+        formatAnswer(text) {
+             if (!text) return '';
+             // Simple markdown-like parsing for bold and newlines
+             let html = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+             return html;
+        }
+
+        formatProvenance(provenance) {
+            if (!provenance) return '';
+            let html = '<div class="knowledge-ai-meta">';
+            if (provenance.provider_name) {
+                html += `<span class="ai-model-info">Generated by ${provenance.provider_name} (${provenance.model})</span>`;
+            }
+            html += '</div>';
+            return html;
+        }
+    }
+
+    class KnowledgeRecheck {
+        constructor() {
+            this.init();
+        }
+
+        init() {
+            // Use delegation since cards can be loaded dynamically
+            $(document).on('click', '.knowledge-recheck-btn', (e) => {
+                this.handleClick(e);
+            });
+        }
+
+        handleClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const $btn = $(e.currentTarget);
+            const url = $btn.data('url');
+
+            if (!url || $btn.hasClass('loading') || $btn.hasClass('success')) {
+                return;
+            }
+
+            // Save original text
+            if (!$btn.data('original-text')) {
+                $btn.data('original-text', $btn.text());
+            }
+
+            $btn.addClass('loading').text('Checking...');
+
+            $.ajax({
+                url: knowledge_vars.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'knowledge_recheck_article',
+                    nonce: knowledge_vars.recheck_nonce,
+                    url: url
+                },
+                success: (response) => {
+                    if (response.success) {
+                        $btn.removeClass('loading')
+                            .addClass('success')
+                            .text('Queued');
+                    } else {
+                        $btn.removeClass('loading').text($btn.data('original-text'));
+                        alert(response.data || 'Error rechecking article');
+                    }
+                },
+                error: (xhr, status, error) => {
+                    $btn.removeClass('loading').text($btn.data('original-text'));
+                    console.error('Recheck Error:', error);
+                    alert('Network error. Please try again.');
+                }
+            });
+        }
+    }
+
     // Initialize on document ready
     $(document).ready(function() {
+        new KnowledgeRecheck();
+
         $('.knowledge-archive-wrapper').each(function() {
             new KnowledgePagination(this);
+        });
+
+        $('.knowledge-search-wrapper').each(function() {
+            new KnowledgeSearch(this);
         });
     });
 
@@ -169,6 +416,13 @@
             const container = $scope.find('.knowledge-archive-wrapper')[0];
             if (container) {
                 new KnowledgePagination(container);
+            }
+        });
+
+        elementorFrontend.hooks.addAction('frontend/element_ready/knowledge_search.default', function($scope) {
+            const container = $scope.find('.knowledge-search-wrapper')[0];
+            if (container) {
+                new KnowledgeSearch(container);
             }
         });
     });
