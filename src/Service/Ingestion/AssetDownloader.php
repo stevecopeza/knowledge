@@ -9,6 +9,7 @@ use DOMXPath;
 class AssetDownloader {
 
 	private ?string $featured_image_candidate = null;
+	private float $best_candidate_score = -1.0;
 
 	public function get_featured_image_candidate(): ?string {
 		return $this->featured_image_candidate;
@@ -16,6 +17,7 @@ class AssetDownloader {
 
 	public function download_and_replace( string $html, string $source_url ): string {
 		$this->featured_image_candidate = null;
+		$this->best_candidate_score = -1.0;
 
 		if ( empty( $html ) ) {
 			return '';
@@ -106,9 +108,12 @@ class AssetDownloader {
 				file_put_contents( $file_path, $image_data['content'] );
 			}
 			
-			// Capture first successful image as featured candidate
-			if ( $this->featured_image_candidate === null ) {
+			// Intelligent Featured Image Selection
+			$score = $this->calculate_image_score( $file_path, $img, $index );
+			if ( $score > $this->best_candidate_score ) {
+				$this->best_candidate_score = $score;
 				$this->featured_image_candidate = $file_path;
+				error_log( "AssetDownloader: New featured candidate: $filename (Score: $score)" );
 			}
 
 			// Replace SRC with Proxy URL
@@ -131,9 +136,19 @@ class AssetDownloader {
 
 	private function fetch_image_with_error( string $url, \DOMElement $img ): ?array {
 		$response = wp_remote_get( $url, [
-			'timeout'   => 15,
+			'timeout'   => 30,
 			'sslverify' => false,
-			'user-agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+			'user-agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+			'headers'     => [
+				'Accept'             => 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+				'Accept-Language'    => 'en-US,en;q=0.9',
+				'Sec-Ch-Ua'          => '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+				'Sec-Ch-Ua-Mobile'   => '?0',
+				'Sec-Ch-Ua-Platform' => '"macOS"',
+				'Sec-Fetch-Dest'     => 'image',
+				'Sec-Fetch-Mode'     => 'no-cors',
+				'Sec-Fetch-Site'     => 'cross-site',
+			],
 		] );
 
 		if ( is_wp_error( $response ) ) {
@@ -159,6 +174,61 @@ class AssetDownloader {
         // Deprecated, use fetch_image_with_error
         return null;
     }
+
+	private function calculate_image_score( string $file_path, \DOMElement $img, int $index ): float {
+		if ( ! file_exists( $file_path ) ) {
+			return 0.0;
+		}
+
+		$size = @getimagesize( $file_path );
+		if ( ! $size ) {
+			return 0.0;
+		}
+
+		$width  = $size[0];
+		$height = $size[1];
+		$area   = $width * $height;
+
+		// 1. Minimum Size Threshold (skip tiny icons/tracking pixels)
+		if ( $width < 200 || $height < 150 ) {
+			return 0.0;
+		}
+
+		$score = (float) $area;
+
+		// 2. Square/Avatar Penalty
+		// Avatars are often square (1:1). Penalize if aspect ratio is close to 1.
+		// Allow some tolerance (e.g., 0.9 to 1.1)
+		$aspect_ratio = $width / $height;
+		if ( $aspect_ratio >= 0.9 && $aspect_ratio <= 1.1 ) {
+			$score *= 0.1; // Heavy penalty for square images
+		}
+
+		// 3. Portrait Penalty (Optional)
+		// Extremely tall images might be sidebars or infographics, but let's just slightly penalize
+		if ( $height > $width * 2 ) {
+			$score *= 0.5;
+		}
+
+		// 4. Keyword Penalty
+		// Check src, class, alt for "avatar", "logo", "icon", "user", "author"
+		$keywords = [ 'avatar', 'logo', 'icon', 'user', 'author', 'profile' ];
+		$haystack = strtolower( $img->getAttribute( 'src' ) . ' ' . $img->getAttribute( 'alt' ) . ' ' . $img->getAttribute( 'class' ) );
+		
+		foreach ( $keywords as $keyword ) {
+			if ( strpos( $haystack, $keyword ) !== false ) {
+				$score *= 0.0; // Kill it immediately
+				break;
+			}
+		}
+
+		// 5. Position Weight (Tie-breaker)
+		// Earlier images are slightly better, but size dominates.
+		// Subtracting index ensures that if two images are identical size, the first one wins.
+		$score -= $index;
+
+		return max( 0.0, $score );
+	}
 
 	private function get_extension( string $mime ): string {
 		$map = [

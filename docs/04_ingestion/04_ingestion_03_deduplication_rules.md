@@ -24,7 +24,13 @@ Hybrid heuristics may be used, but hash match is authoritative.
 
 ## 3. Duplicate Handling
 
-When a duplicate is detected:
+### 3.1 Input-Level Deduplication (Batch Jobs)
+When submitting a batch or bulk import:
+- The system filters duplicate URLs from the input list **before** processing begins.
+- This prevents unnecessary job creation for redundant entries in the same batch.
+
+### 3.2 Storage-Level Deduplication
+When a duplicate is detected during ingestion:
 - No new Article is created
 - The existing Article is reused
 - Source metadata is updated with additional provenance

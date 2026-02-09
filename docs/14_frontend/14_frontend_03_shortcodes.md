@@ -60,7 +60,7 @@ The archive renders a grid of "Article Cards".
     - **Date**: Relative publication date (e.g., "2 days ago").
 
 - **Hover State (Desktop)**:
-    - Card reveals an overlay (slide/fade in).
+    - Card reveals a full white overlay (fade in) with a **1-second delay** to prevent flashing during scrolling.
     - **Summary**: Displays the summary with the following priority:
         1. AI-generated summary (`_kb_ai_summary`).
         2. Manual Excerpt.
@@ -69,9 +69,9 @@ The archive renders a grid of "Article Cards".
     - **Tags**: Displays associated tags as a pill list at the bottom of the card.
 
 - **Mobile State**:
-    - Hover effects are disabled.
-    - Tapping the card once reveals the summary/tags overlay.
-    - Tapping again (or tapping a link) navigates to the Article.
+    - **Visibility**: Hover content (summary) is hidden by default.
+    - **Touch Targets**: Menu buttons (if present) use expanded 44px+ touch targets.
+    - **Interaction**: Tapping the card triggers the hover state (revealing the white overlay and summary). Subsequent interaction navigates to the Article.
 
 ### Examples
 

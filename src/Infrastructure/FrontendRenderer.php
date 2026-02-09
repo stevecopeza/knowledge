@@ -9,12 +9,27 @@ class FrontendRenderer {
 		add_shortcode( 'knowledge_archive', [ $this, 'render_archive_shortcode' ] );
 		add_shortcode( 'knowledge_search', [ $this, 'render_search_shortcode' ] );
 		add_shortcode( 'knowledge_category_list', [ $this, 'render_category_list_shortcode' ] );
-		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_styles' ] );
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+		add_action( 'wp_ajax_knowledge_load_more', [ $this, 'ajax_load_more' ] );
+		add_action( 'wp_ajax_nopriv_knowledge_load_more', [ $this, 'ajax_load_more' ] );
 	}
 
-	public function enqueue_styles(): void {
+	public function enqueue_assets(): void {
 		wp_register_style( 'knowledge-frontend', false );
 		wp_enqueue_style( 'knowledge-frontend' );
+
+		wp_enqueue_script(
+			'knowledge-frontend-js',
+			plugins_url( 'assets/js/knowledge-frontend.js', dirname( __DIR__, 2 ) . '/knowledge.php' ),
+			[ 'jquery' ],
+			'1.0.0',
+			true
+		);
+
+		wp_localize_script( 'knowledge-frontend-js', 'knowledge_vars', [
+			'ajax_url' => admin_url( 'admin-ajax.php' ),
+			'nonce'    => wp_create_nonce( 'knowledge_load_more' ),
+		] );
 		
 		$css = "
 			.knowledge-archive-grid {
@@ -84,137 +99,130 @@ class FrontendRenderer {
 				transform: scale(1.05);
 			}
 
+			.knowledge-card:hover .knowledge-card-hover-content {
+				opacity: 1;
+			}
+
+			/* Add delay for hover on desktop to prevent jarring effect when scrolling */
+			@media (hover: hover) {
+				.knowledge-card:hover .knowledge-card-hover-content {
+					transition-delay: 1s;
+				}
+			}
+
+			.knowledge-card-body {
+				padding: 24px;
+				flex-grow: 1;
+				display: flex;
+				flex-direction: column;
+			}
+
 			.knowledge-card-hover-content {
 				position: absolute;
 				top: 0;
 				left: 0;
 				right: 0;
 				bottom: 0;
-				background: rgba(0, 0, 0, 0.75);
-				color: #fff;
+				background: #ffffff;
+				color: #333;
 				padding: 24px;
 				display: flex;
 				flex-direction: column;
-				justify-content: flex-end;
+				justify-content: center;
 				opacity: 0;
 				transition: opacity 0.3s ease;
-				z-index: 2;
-				pointer-events: none;
+				z-index: 20;
+				text-decoration: none;
 			}
 
-			.knowledge-card:hover .knowledge-card-hover-content {
-				opacity: 1;
+			/* Floating Badges */
+			.knowledge-card-badge {
+				display: inline-block;
+				padding: 4px 8px;
+				border-radius: 4px;
+				background: #e5e7eb;
+				color: #374151;
+				font-size: 0.75rem;
+				font-weight: 500;
+				margin-right: 4px;
+				margin-bottom: 4px;
+				line-height: 1.2;
+			}
+
+			.knowledge-card-floating-badges {
+				position: absolute;
+				top: 12px;
+				right: 12px;
+				z-index: 5;
+				display: flex;
+				gap: 4px;
+				flex-wrap: wrap;
+				justify-content: flex-end;
+				pointer-events: none; /* Let clicks pass through to card/image */
+			}
+			
+			.knowledge-card-floating-badges .knowledge-card-badge {
+				background: rgba(255, 255, 255, 0.9);
+				color: #333;
+				box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+				backdrop-filter: blur(4px);
+				pointer-events: auto; /* Re-enable clicks on badges if they are links (future proofing) */
 			}
 
 			.knowledge-card-summary {
-				font-size: 0.9rem;
-				line-height: 1.5;
-				margin-bottom: 12px;
 				display: -webkit-box;
-				-webkit-line-clamp: 4;
+				-webkit-line-clamp: 10;
 				-webkit-box-orient: vertical;
 				overflow: hidden;
-				text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+				margin-bottom: 16px;
 			}
 
 			.knowledge-card-hover-tags {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 6px;
-			}
-
-			.knowledge-card-hover-tags .knowledge-card-badge {
-				background: rgba(255, 255, 255, 0.25);
-				color: #fff;
-				border: 1px solid rgba(255, 255, 255, 0.1);
-			}
-
-			.knowledge-card-body {
-				padding: 16px;
-				display: flex;
-				flex-direction: column;
-				flex-grow: 1;
-			}
-
-			.knowledge-card-title {
-				font-size: 1.05rem;
-				font-weight: 600;
-				color: #111827;
-				margin: 0 0 12px 0;
-				line-height: 1.4;
-				display: -webkit-box;
-				-webkit-line-clamp: 2;
-				-webkit-box-orient: vertical;
-				overflow: hidden;
-				text-decoration: none;
-			}
-			
-			a.knowledge-card-link {
-				text-decoration: none;
-				color: inherit;
-			}
-
-			/* Stretched Link */
-			a.knowledge-card-link::after {
-				content: '';
-				position: absolute;
-				top: 0;
-				left: 0;
-				right: 0;
-				bottom: 0;
-				z-index: 1;
-			}
-
-			.knowledge-card-badges {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 6px;
-				margin-bottom: 16px;
-				position: relative;
-				z-index: 2; /* Clickable badges */
-			}
-
-			.knowledge-card-badge {
-				display: inline-flex;
-				align-items: center;
-				padding: 2px 10px;
-				border-radius: 9999px;
-				font-size: 0.75rem;
-				font-weight: 500;
-				background-color: #f3f4f6;
-				color: #4b5563;
-				white-space: nowrap;
-				letter-spacing: 0.025em;
-			}
-
-			.knowledge-card-footer {
 				margin-top: auto;
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				padding-top: 12px;
-				border-top: 1px solid #f3f4f6;
-				position: relative;
-				z-index: 2;
+			}
+
+			/* Mobile/Touch Optimizations */
+			@media (hover: none) {
+				.knowledge-card-hover-content {
+					background: #ffffff;
+					padding: 16px;
+					justify-content: center;
+				}
+				
+				.knowledge-card-summary {
+					-webkit-line-clamp: 6;
+					font-size: 0.9rem;
+					margin-bottom: 12px;
+					text-shadow: none;
+					color: #333;
+				}
 			}
 
 			.knowledge-card-meta {
 				display: flex;
 				align-items: center;
-				gap: 6px;
 				font-size: 0.75rem;
 				color: #6b7280;
 			}
 
+			.knowledge-card-avatar {
+				width: 20px;
+				height: 20px;
+				border-radius: 50%;
+				margin-right: 6px;
+				object-fit: cover;
+			}
+
 			.knowledge-card-source {
-				font-weight: 600;
+				font-weight: 500;
 				color: #374151;
 			}
 
 			.knowledge-card-menu-btn {
 				background: none;
 				border: none;
-				padding: 4px;
+				padding: 12px; /* Increased touch target */
+				margin: -8px; /* Negative margin to maintain visual position */
 				cursor: pointer;
 				color: #9ca3af;
 				display: flex;
@@ -308,6 +316,59 @@ class FrontendRenderer {
 				opacity: 0.7;
 				margin-left: 5px;
 			}
+			
+			/* Pagination */
+			.knowledge-pagination {
+				margin-top: 32px;
+				display: flex;
+				justify-content: center;
+				gap: 8px;
+			}
+			
+			.knowledge-load-more-btn {
+				padding: 12px 24px;
+				background: #f3f4f6;
+				border: 1px solid #e5e7eb;
+				border-radius: 6px;
+				cursor: pointer;
+				font-weight: 500;
+				color: #374151;
+				transition: all 0.2s ease;
+			}
+			
+			.knowledge-load-more-btn:hover {
+				background: #e5e7eb;
+				color: #111827;
+			}
+			
+			.knowledge-load-more-btn:disabled {
+				opacity: 0.6;
+				cursor: not-allowed;
+			}
+			
+			.knowledge-loading-spinner {
+				display: inline-block;
+				width: 20px;
+				height: 20px;
+				border: 2px solid rgba(0,0,0,0.1);
+				border-left-color: currentColor;
+				border-radius: 50%;
+				animation: knowledge-spin 1s linear infinite;
+				margin-right: 8px;
+				vertical-align: middle;
+			}
+			
+			@keyframes knowledge-spin {
+				0% { transform: rotate(0deg); }
+				100% { transform: rotate(360deg); }
+			}
+			
+			.knowledge-end-message {
+				text-align: center;
+				color: #6b7280;
+				padding: 20px;
+				font-style: italic;
+			}
 		";
 		
 		wp_add_inline_style( 'knowledge-frontend', $css );
@@ -362,60 +423,114 @@ class FrontendRenderer {
 
 		while ( $query->have_posts() ) {
 			$query->the_post();
-			
-			// Image
-			$img_html = '';
-			if ( has_post_thumbnail() ) {
-				$img_html = get_the_post_thumbnail( get_the_ID(), 'medium' );
+			$output .= self::render_card( get_post() );
+		}
+
+		$output .= '</div>';
+		
+		wp_reset_postdata();
+
+		return $output;
+	}
+
+	/**
+	 * Render a single Knowledge Card.
+	 * 
+	 * @param \WP_Post $post The post object.
+	 * @param array    $options Display options.
+	 * @return string HTML output.
+	 */
+	public static function render_card( \WP_Post $post, array $options = [] ): string {
+		$defaults = [
+			'show_image'        => true,
+			'title_length'      => 0,
+			'show_summary'      => true,
+			'summary_length'    => 30,
+			'show_badges'       => true,
+			'show_meta'         => true,
+			'show_category'     => true,
+			'category_position' => 'inline', // 'inline' or 'top_right'
+			'show_avatar'       => false,
+		];
+		$options = wp_parse_args( $options, $defaults );
+
+		$post_id = $post->ID;
+		
+		// Title
+		$title = get_the_title( $post );
+		if ( ! empty( $options['title_length'] ) && intval( $options['title_length'] ) > 0 ) {
+			$limit = intval( $options['title_length'] );
+			if ( mb_strlen( $title ) > $limit ) {
+				$title = mb_substr( $title, 0, $limit ) . '...';
+			}
+		}
+		
+		// Image
+		$img_html = '';
+		if ( $options['show_image'] ) {
+			if ( has_post_thumbnail( $post_id ) ) {
+				$img_html = get_the_post_thumbnail( $post_id, 'medium' );
 			} else {
 				$img_html = '<div class="knowledge-no-image">No Image</div>';
 			}
+		}
 
-			// Badges (Category + Tags, max 3)
-			$terms = [];
-			$cats = get_the_terms( get_the_ID(), 'kb_category' );
+		// Badges (Separated)
+		$body_badges_html = '';
+		$floating_badges_html = '';
+		$hover_badges_html = '';
+		
+		if ( $options['show_category'] ) {
+			$cats = get_the_terms( $post_id, 'kb_category' );
 			if ( $cats && ! is_wp_error( $cats ) ) {
+				$badges_str = '';
 				foreach ( $cats as $c ) {
-					$terms[] = $c->name;
+					$badges_str .= sprintf( '<span class="knowledge-card-badge knowledge-card-category">%s</span>', esc_html( $c->name ) );
+				}
+				
+				if ( 'top_right' === $options['category_position'] ) {
+					$floating_badges_html = sprintf( '<div class="knowledge-card-floating-badges">%s</div>', $badges_str );
+				} else {
+					$body_badges_html = $badges_str;
 				}
 			}
-			$tags = get_the_terms( get_the_ID(), 'kb_tag' );
+		}
+
+		if ( $options['show_badges'] ) {
+			$tags = get_the_terms( $post_id, 'kb_tag' );
 			if ( $tags && ! is_wp_error( $tags ) ) {
 				foreach ( $tags as $t ) {
-					$terms[] = $t->name;
+					$hover_badges_html .= sprintf( '<span class="knowledge-card-badge">%s</span>', esc_html( $t->name ) );
 				}
 			}
-			$terms = array_slice( array_unique( $terms ), 0, 3 );
-			
-			$badges_html = '';
-			foreach ( $terms as $term_name ) {
-				$badges_html .= sprintf( '<span class="knowledge-card-badge">%s</span>', esc_html( $term_name ) );
-			}
+		}
 
-			// Source & Date
-			$source = 'Knowledge';
-			$source_url = get_post_meta( get_the_ID(), '_kb_source_url', true );
-			if ( $source_url ) {
-				$parsed = parse_url( $source_url );
-				if ( isset( $parsed['host'] ) ) {
-					$source = str_replace( 'www.', '', $parsed['host'] );
-				}
+		// Source & Date
+		$source = 'Knowledge';
+		$source_url = get_post_meta( $post_id, '_kb_source_url', true );
+		if ( $source_url ) {
+			$parsed = parse_url( $source_url );
+			if ( isset( $parsed['host'] ) ) {
+				$source = str_replace( 'www.', '', $parsed['host'] );
 			}
-			
-			$date = get_the_date( 'M j' );
-			
-			// Summary Priority: AI Summary -> Excerpt -> File Content -> Fallback
-			$summary = get_post_meta( get_the_ID(), '_kb_ai_summary', true );
+		}
+		
+		$date = get_the_date( 'M j', $post );
+		
+		// Summary Priority: AI Summary -> Excerpt -> File Content -> Fallback
+		$summary = '';
+		if ( $options['show_summary'] ) {
+			$summary = get_post_meta( $post_id, '_kb_ai_summary', true );
 			
 			if ( empty( $summary ) ) {
-				$summary = get_the_excerpt();
+				$summary = get_the_excerpt( $post );
 			}
 
 			if ( empty( $summary ) ) {
 				// Try to get content from file
 				$versions = get_posts( [
 					'post_type'      => 'kb_version',
-					'post_parent'    => get_the_ID(),
+					'post_parent'    => $post_id,
 					'posts_per_page' => 1,
 					'orderby'        => 'date',
 					'order'          => 'DESC',
@@ -440,54 +555,71 @@ class FrontendRenderer {
 				$summary = 'View article details...';
 			}
 
-			$output .= sprintf(
-				'<article class="knowledge-card">
-					<div class="knowledge-card-image-wrapper">
+			// Apply length limit if set
+			if ( ! empty( $options['summary_length'] ) && intval( $options['summary_length'] ) > 0 ) {
+				$summary = wp_trim_words( $summary, intval( $options['summary_length'] ) );
+			}
+		}
+
+		$footer_html = '';
+		if ( $options['show_meta'] ) {
+			$avatar_html = '';
+			if ( ! empty( $options['show_avatar'] ) ) {
+				$avatar_html = get_avatar( $post->post_author, 40, '', '', ['class' => 'knowledge-card-avatar'] );
+			}
+
+			$footer_html = sprintf(
+				'<div class="knowledge-card-footer">
+					<div class="knowledge-card-meta">
 						%s
-						<div class="knowledge-card-hover-content">
-							<div class="knowledge-card-summary">%s</div>
-							<div class="knowledge-card-hover-tags">%s</div>
-						</div>
+						<span class="knowledge-card-source">%s</span>
+						<span>•</span>
+						<span class="knowledge-card-date">%s</span>
 					</div>
-					<div class="knowledge-card-body">
-						<a href="%s" class="knowledge-card-link">
-							<h3 class="knowledge-card-title">%s</h3>
-						</a>
-						<div class="knowledge-card-badges">
-							%s
-						</div>
-						<div class="knowledge-card-footer">
-							<div class="knowledge-card-meta">
-								<span class="knowledge-card-source">%s</span>
-								<span>•</span>
-								<span class="knowledge-card-date">%s</span>
-							</div>
-							<button class="knowledge-card-menu-btn" aria-label="Options">
-								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-									<circle cx="12" cy="12" r="1"></circle>
-									<circle cx="19" cy="12" r="1"></circle>
-									<circle cx="5" cy="12" r="1"></circle>
-								</svg>
-							</button>
-						</div>
-					</div>
-				</article>',
-				$img_html,
-				esc_html( $summary ),
-				$badges_html,
-				get_permalink(),
-				get_the_title(),
-				$badges_html,
+					<button class="knowledge-card-menu-btn" aria-label="Options">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<circle cx="12" cy="12" r="1"></circle>
+							<circle cx="19" cy="12" r="1"></circle>
+							<circle cx="5" cy="12" r="1"></circle>
+						</svg>
+					</button>
+				</div>',
+				$avatar_html,
 				esc_html( $source ),
 				esc_html( $date )
 			);
 		}
 
-		$output .= '</div>';
-		
-		wp_reset_postdata();
-
-		return $output;
+		return sprintf(
+			'<article class="knowledge-card">
+				%s
+				<div class="knowledge-card-image-wrapper">
+					%s
+				</div>
+				<div class="knowledge-card-body">
+					<h3 class="knowledge-card-title">
+						<a href="%s" class="knowledge-card-link">%s</a>
+					</h3>
+					<div class="knowledge-card-badges">
+						%s
+					</div>
+					%s
+				</div>
+				<a href="%s" class="knowledge-card-hover-content">
+					<div class="knowledge-card-summary">%s</div>
+					<div class="knowledge-card-hover-tags">%s</div>
+				</a>
+			</article>',
+			$floating_badges_html,
+			$img_html,
+			get_permalink( $post ),
+			esc_html( $title ),
+			$body_badges_html,
+			$footer_html,
+			get_permalink( $post ),
+			esc_html( $summary ),
+			$hover_badges_html
+		);
 	}
 
 	public function render_search_shortcode( $atts ): string {
@@ -621,5 +753,101 @@ class FrontendRenderer {
 		}
 
 		return $dom->saveHTML();
+	}
+
+	public function ajax_load_more(): void {
+		if ( ! check_ajax_referer( 'knowledge_load_more', 'nonce', false ) ) {
+			wp_send_json_error( 'Invalid nonce' );
+		}
+
+		$page = isset( $_POST['page'] ) ? intval( $_POST['page'] ) : 1;
+		$posts_per_page = isset( $_POST['posts_per_page'] ) ? intval( $_POST['posts_per_page'] ) : 12;
+		
+		// Reconstruct Query Args securely
+		// We only allow specific arguments to be passed
+		$query_args = [
+			'post_type'      => 'kb_article',
+			'post_status'    => 'publish',
+			'paged'          => $page,
+			'posts_per_page' => $posts_per_page,
+		];
+
+		if ( ! empty( $_POST['orderby'] ) ) {
+			$allowed_orderby = [ 'date', 'title', 'modified', 'rand' ];
+			if ( in_array( $_POST['orderby'], $allowed_orderby, true ) ) {
+				$query_args['orderby'] = sanitize_text_field( $_POST['orderby'] );
+			}
+		}
+
+		if ( ! empty( $_POST['order'] ) ) {
+			$query_args['order'] = ( 'ASC' === strtoupper( $_POST['order'] ) ) ? 'ASC' : 'DESC';
+		}
+
+		// Handle Options
+		$options = isset( $_POST['options'] ) ? $_POST['options'] : [];
+		if ( is_string( $options ) ) {
+			// Try to decode if it came as a JSON string
+			$decoded = json_decode( stripslashes( $options ), true );
+			if ( is_array( $decoded ) ) {
+				$options = $decoded;
+			}
+		}
+		
+		// Sanitize options
+		$safe_options = [
+			'show_image'        => ! empty( $options['show_image'] ) && filter_var( $options['show_image'], FILTER_VALIDATE_BOOLEAN ),
+			'title_length'      => isset( $options['title_length'] ) ? intval( $options['title_length'] ) : 0,
+			'show_summary'      => ! empty( $options['show_summary'] ) && filter_var( $options['show_summary'], FILTER_VALIDATE_BOOLEAN ),
+			'summary_length'    => isset( $options['summary_length'] ) ? intval( $options['summary_length'] ) : 20,
+			'show_category'     => ! empty( $options['show_category'] ) && filter_var( $options['show_category'], FILTER_VALIDATE_BOOLEAN ),
+			'category_position' => isset( $options['category_position'] ) ? sanitize_text_field( $options['category_position'] ) : 'on_image',
+			'show_badges'       => ! empty( $options['show_badges'] ) && filter_var( $options['show_badges'], FILTER_VALIDATE_BOOLEAN ),
+			'show_meta'         => ! empty( $options['show_meta'] ) && filter_var( $options['show_meta'], FILTER_VALIDATE_BOOLEAN ),
+			'show_avatar'       => ! empty( $options['show_avatar'] ) && filter_var( $options['show_avatar'], FILTER_VALIDATE_BOOLEAN ),
+		];
+
+		// Taxonomy Filters
+		$tax_query = [];
+		if ( ! empty( $_POST['category'] ) ) {
+			$tax_query[] = [
+				'taxonomy' => 'kb_category',
+				'field'    => 'slug',
+				'terms'    => sanitize_text_field( $_POST['category'] ),
+			];
+		}
+
+		if ( ! empty( $_POST['tag'] ) ) {
+			$tax_query[] = [
+				'taxonomy' => 'kb_tag',
+				'field'    => 'slug',
+				'terms'    => sanitize_text_field( $_POST['tag'] ),
+			];
+		}
+
+		if ( ! empty( $tax_query ) ) {
+			$query_args['tax_query'] = $tax_query;
+		}
+		
+		// IDs filter
+		if ( ! empty( $_POST['ids'] ) ) {
+			$ids = array_map( 'intval', explode( ',', $_POST['ids'] ) );
+			$query_args['post__in'] = $ids;
+		}
+
+		$query = new \WP_Query( $query_args );
+		$html = '';
+
+		if ( $query->have_posts() ) {
+			while ( $query->have_posts() ) {
+				$query->the_post();
+				$html .= self::render_card( get_post(), $safe_options );
+			}
+		}
+
+		wp_send_json_success( [
+			'html'        => $html,
+			'max_pages'   => $query->max_num_pages,
+			'found_posts' => $query->found_posts,
+		] );
 	}
 }

@@ -14,8 +14,10 @@ class Source {
 			throw new InvalidArgumentException( "Invalid URL provided: {$url}" );
 		}
 
-		$this->url      = $url;
-		$parsed         = parse_url( $url );
+		// Normalize: Remove trailing slash for consistency
+		$this->url      = rtrim( $url, '/' );
+		
+		$parsed         = parse_url( $this->url );
 		$this->domain   = $parsed['host'] ?? '';
 		$this->protocol = $parsed['scheme'] ?? '';
 	}

@@ -14,6 +14,7 @@ class FilesystemInitializer {
 			$root . '/forks',
 			$root . '/media',
 			$root . '/ai',
+			$root . '/imports',
 			$root . '/temp',
 		];
 

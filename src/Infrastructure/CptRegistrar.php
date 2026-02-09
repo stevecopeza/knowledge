@@ -14,6 +14,7 @@ class CptRegistrar {
 		$this->register_version();
 		$this->register_fork();
 		$this->register_project();
+		$this->register_import_job();
 	}
 
 	public function register_taxonomies(): void {
@@ -81,6 +82,22 @@ class CptRegistrar {
 			'show_in_menu' => 'knowledge-main',
 			'menu_icon'    => 'dashicons-portfolio',
 			'supports'     => [ 'title', 'editor', 'author' ],
+		] );
+	}
+
+	private function register_import_job(): void {
+		register_post_type( 'kb_import_job', [
+			'labels'       => [
+				'name'          => 'Import Jobs',
+				'singular_name' => 'Import Job',
+			],
+			'public'       => false,
+			'show_ui'      => false, // Hidden from menu, managed via custom page
+			'supports'     => [ 'title', 'author' ],
+			'capabilities' => [
+				'create_posts' => 'do_not_allow',
+			],
+			'map_meta_cap' => true,
 		] );
 	}
 

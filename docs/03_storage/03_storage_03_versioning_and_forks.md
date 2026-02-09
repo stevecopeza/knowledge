@@ -29,7 +29,11 @@ A new Version is created when:
 - Source content hash changes
 - Significant structural changes are detected
 
-Rules:
+### 3.1 Attribution
+- **Automatic Ingestion**: The Version inherits the `post_author` of the Article or the user running the import job.
+- **Manual Update**: The user triggering the update is recorded as the `post_author`.
+
+### 3.2 Rules
 - The existing Version is marked **Superseded**
 - The new Version becomes **Latest Source Version**
 - No existing annotations are moved automatically

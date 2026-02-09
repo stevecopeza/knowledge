@@ -19,12 +19,12 @@ class IngestionService {
 		$this->storage          = new StorageEngine();
 	}
 
-	public function ingest_url( string $url ): Version {
+	public function ingest_url( string $url, int $author_id = 0 ): Version {
 		if ( function_exists( 'set_time_limit' ) ) {
 			set_time_limit( 300 ); // 5 minutes
 		}
 
-		error_log( "IngestionService: Starting ingestion for URL: $url" );
+		error_log( "IngestionService: Starting ingestion for URL: $url (Author ID: $author_id)" );
 
 		$source = new Source( $url );
 
@@ -42,14 +42,15 @@ class IngestionService {
 
 		// 3. Download Assets (Images)
 		error_log( "IngestionService: Downloading assets..." );
-		$content = $this->asset_downloader->download_and_replace( $content, $url );
+		// Use normalized source URL for asset resolution to match fetcher
+		$content = $this->asset_downloader->download_and_replace( $content, $source->get_url() );
 		error_log( "IngestionService: Assets downloaded." );
 
 		// 4. Store
 		error_log( "IngestionService: Storing version..." );
 		$featured_image = $this->asset_downloader->get_featured_image_candidate();
 		
-		$version = $this->storage->store( $source, $title, $content, $data['metadata'] ?? [], $featured_image );
+		$version = $this->storage->store( $source, $title, $content, $data['metadata'] ?? [], $featured_image, $author_id );
 		error_log( "IngestionService: Version stored. UUID: " . $version->get_uuid() );
 		
 		// 5. Schedule AI Analysis

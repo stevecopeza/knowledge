@@ -1,0 +1,169 @@
+/* Knowledge Admin Styles */
+
+/* AI Provider Rows */
+.knowledge-provider-row {
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-right: 5px solid #ccd0d4; /* Default to grey, becomes color on status */
+    transition: border-right-color 0.5s ease;
+}
+
+.knowledge-provider-row.status-connected {
+    border-right-color: #46b450;
+}
+
+.knowledge-provider-row.status-disconnected {
+    border-right-color: #dc3232;
+}
+
+.knowledge-provider-row.status-checking {
+    border-right-color: #f0ad4e;
+}
+
+.knowledge-provider-form {
+    border-right: 5px solid #ccd0d4;
+    transition: border-right-color 0.5s ease;
+}
+
+.knowledge-provider-form.status-connected {
+    border-right-color: #46b450;
+}
+
+.knowledge-provider-form.status-disconnected {
+    border-right-color: #dc3232;
+}
+
+.knowledge-provider-form.status-checking {
+    border-right-color: #f0ad4e;
+}
+
+/* Common Admin Optimizations */
+input[type="text"],
+input[type="url"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="search"],
+textarea,
+select {
+    font-size: 14px; /* Default WP is often 14px */
+}
+
+/* Tooltip Styles */
+.knowledge-tooltip-trigger {
+    position: relative;
+    cursor: help;
+    color: #2271b1;
+    text-decoration: underline;
+}
+
+.knowledge-tooltip-content {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 300px;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    padding: 15px;
+    z-index: 9999;
+    border-radius: 4px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #3c434a;
+    text-align: left;
+    white-space: normal;
+}
+
+.knowledge-tooltip-trigger:hover .knowledge-tooltip-content {
+    display: block;
+}
+
+.knowledge-tooltip-section {
+    margin-bottom: 8px;
+}
+
+.knowledge-tooltip-section:last-child {
+    margin-bottom: 0;
+}
+
+.knowledge-tooltip-section strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #1d2327;
+}
+
+/* Mobile Optimizations */
+@media screen and (max-width: 782px) {
+    /* Improve Inputs on Mobile */
+    input[type="text"],
+    input[type="url"],
+    input[type="password"],
+    input[type="email"],
+    input[type="number"],
+    input[type="search"],
+    textarea,
+    select {
+        font-size: 16px !important; /* Prevent iOS zoom */
+        padding: 8px 10px;
+        height: 44px; /* Touch target */
+    }
+    
+    textarea {
+        height: auto;
+    }
+
+    /* Buttons */
+    .button, 
+    .button-primary, 
+    .button-secondary {
+        padding: 10px 14px !important;
+        height: auto !important;
+        min-height: 44px;
+        line-height: normal !important;
+        font-size: 14px !important;
+    }
+
+    /* AI Settings Page */
+    .knowledge-provider-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 10px;
+    }
+    
+    .knowledge-provider-header > div {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .knowledge-provider-details {
+        padding-left: 0 !important;
+        margin-top: 15px !important;
+    }
+    
+    #knowledge-add-provider-form {
+        border-left: none !important;
+        border-top: 4px solid #2271b1;
+    }
+    
+    /* Ingestion Page */
+    .form-table th, .form-table td {
+        display: block;
+        width: 100%;
+        padding: 10px 0;
+    }
+    
+    #knowledge_bulk_urls {
+        min-height: 200px;
+    }
+    
+    /* Operations Page */
+    .code-block {
+        font-size: 13px;
+        -webkit-overflow-scrolling: touch;
+    }
+}

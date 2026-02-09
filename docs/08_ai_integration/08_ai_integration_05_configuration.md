@@ -27,8 +27,11 @@ The settings page allows administrators to manage the list of AI providers.
     - **Type**: Select the provider type (e.g., `Ollama`, `OpenAI`).
     - **Name**: Give the provider a friendly name (e.g., "Office GPU Server", "Backup OpenAI").
     - **Connection Details**: Enter the required fields for the selected type (URL, API Key).
-    - **Model Selection**: Upon entering valid connection details (URL or API Key), the system automatically fetches available models from the provider and offers them in a dropdown list. You can also type a custom model name.
+    - **Model Selection**: Upon entering valid connection details (URL or API Key), the system automatically fetches available models from the provider and offers them in a **standard dropdown list**.
+        - A status indicator next to the field confirms the number of models found (e.g., <span style="color:green">"4 models found"</span>).
+        - If your currently configured model is not in the list (e.g., it was deleted from the server), it will be preserved and shown as "(Current)".
     - **Live Validation**: Connection checks run automatically when you leave the URL or API Key fields. A spinner and "Checking..." text indicate validation is in progress.
+    - **Manual Model Entry**: If the connection check fails or returns no models, the dropdown gracefully reverts to a **standard text input**, allowing you to manually type the model name (e.g., `mistral:latest`).
 
 - **Edit Provider**: Click the "Edit" button on any provider row to modify its configuration.
     - The form will populate with existing details.

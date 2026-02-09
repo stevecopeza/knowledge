@@ -20,6 +20,11 @@ Examples include:
 - Summarisation
 - Embedding generation
 - Project research tasks
+- **Batch Import Jobs**:
+    - Handles high-volume ingestion (>50 items).
+    - Uses `kb_import_job` CPT to track progress.
+    - Stores URL lists in filesystem to avoid database bloat.
+    - Processes in chunks (default: 10) to respect timeouts.
 - **Reconciliation / Health Check**:
     - Verifies DB records match Filesystem artifacts.
     - Flags "Ghost" records (DB entry without file).
@@ -58,8 +63,10 @@ Failures in background jobs (specifically ingestion) are not ephemeral. They are
 - **Storage**: Failed jobs are logged to the database (max 50 entries) via `FailureLog`.
 - **Visibility**: Displayed in the **Operations** dashboard with timestamps and error messages.
 - **Resolution**:
+    - **Single Action**: Resubmit or Delete individual failures via row buttons.
+    - **Bulk Action**: Select multiple failures and perform "Resubmit" or "Delete" operations in batch.
     - **Resubmit**: Re-schedules the job immediately and removes the error log.
-    - **Dismiss**: Acknowledges the error and removes the log without action.
+    - **Delete**: Acknowledges the error and removes the log without action.
 
 ---
 

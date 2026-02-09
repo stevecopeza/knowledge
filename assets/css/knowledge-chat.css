@@ -45,11 +45,63 @@
     background: #fff;
     display: flex;
     gap: 10px;
+    align-items: center;
 }
 
 #knowledge-chat-input {
     flex: 1;
     padding: 10px;
+    font-size: 16px; /* Prevent iOS zoom */
+    height: 44px; /* Min touch target */
+    box-sizing: border-box;
+}
+
+#knowledge-chat-submit {
+    padding: 0 20px;
+    height: 44px; /* Min touch target */
+    font-size: 14px;
+}
+
+.knowledge-chat-select {
+    max-width: 250px; 
+    margin-right: 10px;
+    height: 44px; /* Min touch target */
+    font-size: 16px; /* Prevent iOS zoom */
+}
+
+/* Mobile Optimizations */
+@media screen and (max-width: 782px) {
+    #knowledge-chat-controls {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 15px;
+    }
+
+    .knowledge-chat-select {
+        max-width: 100%;
+        margin-right: 0;
+        margin-bottom: 10px;
+        width: 100%;
+    }
+
+    #knowledge-chat-input {
+        width: 100%;
+    }
+
+    #knowledge-chat-submit {
+        width: 100%;
+        margin-top: 5px;
+    }
+    
+    #knowledge-chat-container {
+        margin-top: 10px;
+        border-width: 0; /* Full width on mobile usually looks better without side borders if flushed, but keeping border is fine too */
+    }
+    
+    .message-user, .message-ai {
+        margin-left: 5%;
+        margin-right: 5%;
+    }
 }
 
 #knowledge-chat-status {

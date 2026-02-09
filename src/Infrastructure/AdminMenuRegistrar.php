@@ -7,6 +7,61 @@ class AdminMenuRegistrar {
 	public function init(): void {
 		add_action( 'admin_menu', [ $this, 'register_main_menu' ] );
 		add_action( 'wp_ajax_knowledge_check_connection', [ $this, 'handle_check_connection' ] );
+		add_action( 'wp_ajax_knowledge_check_duplicates', [ $this, 'handle_check_duplicates' ] );
+	}
+
+	public function handle_check_duplicates(): void {
+		check_ajax_referer( 'knowledge_ingest_nonce', 'nonce' );
+		
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( 'Permission denied' );
+		}
+
+		$raw_urls = isset( $_POST['urls'] ) ? explode( "\n", $_POST['urls'] ) : [];
+		$unique_urls = [];
+		$removed_count = 0;
+
+		foreach ( $raw_urls as $line ) {
+			$line = trim( $line );
+			if ( empty( $line ) ) continue;
+
+			$url = esc_url_raw( $line );
+			if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
+				continue;
+			}
+
+			// Check if URL exists in meta
+			$args = [
+				'post_type'  => 'kb_version', // Check versions as they hold the source URL
+				'meta_query' => [
+					[
+						'key'     => '_kb_source_url',
+						'value'   => $url,
+						'compare' => '=',
+					],
+				],
+				'fields'     => 'ids',
+				'numberposts' => 1,
+			];
+			$query = new \WP_Query( $args );
+
+			if ( $query->have_posts() ) {
+				$removed_count++;
+			} else {
+				// Also check if we have it in the list already (dedupe input)
+				if ( ! in_array( $url, $unique_urls, true ) ) {
+					$unique_urls[] = $url;
+				} else {
+					$removed_count++;
+				}
+			}
+		}
+
+		wp_send_json_success( [
+			'cleaned_list' => implode( "\n", $unique_urls ),
+			'removed_count' => $removed_count,
+			'message' => "Check complete. $removed_count duplicate(s) removed.",
+		] );
 	}
 
 	public function handle_check_connection(): void {
@@ -28,6 +83,7 @@ class AdminMenuRegistrar {
 
 		try {
 			$provider = null;
+			error_log( "AJAX Check Connection: Type=$type, URL=" . ( $clean_config['url'] ?? 'none' ) );
 			if ( $type === 'ollama' ) {
 				$provider = new \Knowledge\Service\AI\Provider\OllamaProvider( 'temp', 'temp', $clean_config );
 			} elseif ( $type === 'openai' ) {
@@ -38,12 +94,15 @@ class AdminMenuRegistrar {
 				$models = [];
 				if ( method_exists( $provider, 'get_models' ) ) {
 					$models = $provider->get_models();
+					error_log( "AJAX Models: " . print_r( $models, true ) );
 				}
 				wp_send_json_success( [ 'message' => 'Connected', 'models' => $models ] );
 			} else {
+				error_log( "AJAX Check: Provider unavailable" );
 				wp_send_json_error( 'Unavailable' );
 			}
 		} catch ( \Exception $e ) {
+			error_log( "AJAX Check Error: " . $e->getMessage() );
 			wp_send_json_error( $e->getMessage() );
 		}
 	}
@@ -68,7 +127,7 @@ class AdminMenuRegistrar {
 	}
 
 	private function register_operations_submenu(): void {
-		add_submenu_page(
+		$hook = add_submenu_page(
 			'knowledge-main',
 			'Operations',
 			'Operations',
@@ -76,6 +135,8 @@ class AdminMenuRegistrar {
 			'knowledge-operations',
 			[ $this, 'render_operations' ]
 		);
+
+		add_action( 'load-' . $hook, [ $this, 'enqueue_admin_styles' ] );
 	}
 
 	private function register_chat_submenu(): void {
@@ -92,6 +153,8 @@ class AdminMenuRegistrar {
 	}
 
 	public function enqueue_chat_assets(): void {
+		$this->enqueue_admin_styles();
+		
 		$plugin_url = plugin_dir_url( dirname( __DIR__, 2 ) . '/knowledge.php' );
 		
 		wp_enqueue_script(
@@ -116,6 +179,16 @@ class AdminMenuRegistrar {
 		);
 	}
 
+	public function enqueue_admin_styles(): void {
+		$plugin_url = plugin_dir_url( dirname( __DIR__, 2 ) . '/knowledge.php' );
+		wp_enqueue_style(
+			'knowledge-admin',
+			$plugin_url . 'assets/css/knowledge-admin.css',
+			[],
+			'1.0.0'
+		);
+	}
+
 	public function render_chat_page(): void {
 		echo '<div class="wrap">';
 		echo '<h1>Ask AI</h1>';
@@ -123,7 +196,7 @@ class AdminMenuRegistrar {
 		echo '<div id="knowledge-chat-history"></div>';
 		echo '<div id="knowledge-chat-status"></div>';
 		echo '<div id="knowledge-chat-controls">';
-		echo '<select id="knowledge-chat-mode" class="regular-text" style="max-width: 250px; margin-right: 10px;">';
+		echo '<select id="knowledge-chat-mode" class="regular-text knowledge-chat-select">';
 		echo '<option value="combined_prioritised" selected>Combined (RAG Prioritised)</option>';
 		echo '<option value="rag_only">RAG Content Only</option>';
 		echo '<option value="llm_only">LLM Only</option>';
@@ -137,7 +210,7 @@ class AdminMenuRegistrar {
 	}
 
 	private function register_ingestion_submenu(): void {
-		add_submenu_page(
+		$hook = add_submenu_page(
 			'knowledge-main',
 			'Ingestion',
 			'Ingestion',
@@ -145,6 +218,8 @@ class AdminMenuRegistrar {
 			'knowledge-ingestion',
 			[ $this, 'render_ingestion' ]
 		);
+
+		add_action( 'load-' . $hook, [ $this, 'enqueue_admin_styles' ] );
 	}
 
 	private function register_ai_settings_submenu(): void {
@@ -161,13 +236,14 @@ class AdminMenuRegistrar {
 	}
 
 	public function enqueue_settings_assets(): void {
+		$this->enqueue_admin_styles();
 		$plugin_url = plugin_dir_url( dirname( __DIR__, 2 ) . '/knowledge.php' );
 		
 		wp_enqueue_script(
 			'knowledge-settings',
 			$plugin_url . 'assets/js/knowledge-settings.js',
 			[ 'jquery', 'jquery-ui-sortable' ],
-			'1.0.0',
+			'1.0.5',
 			true
 		);
 		wp_localize_script( 'knowledge-settings', 'knowledgeSettings', [
@@ -246,38 +322,6 @@ class AdminMenuRegistrar {
 		}
 
 		echo '<div class="wrap">';
-		echo '<style>
-			.knowledge-provider-row {
-				padding: 10px;
-				margin-bottom: 10px;
-				background: #fff;
-				border: 1px solid #ccd0d4;
-				border-right: 5px solid #ccd0d4; /* Default to grey, becomes color on status */
-				transition: border-right-color 0.5s ease;
-			}
-			.knowledge-provider-row.status-connected {
-				border-right-color: #46b450;
-			}
-			.knowledge-provider-row.status-disconnected {
-				border-right-color: #dc3232;
-			}
-			.knowledge-provider-row.status-checking {
-				border-right-color: #f0ad4e;
-			}
-			.knowledge-provider-form {
-				border-right: 5px solid #ccd0d4;
-				transition: border-right-color 0.5s ease;
-			}
-			.knowledge-provider-form.status-connected {
-				border-right-color: #46b450;
-			}
-			.knowledge-provider-form.status-disconnected {
-				border-right-color: #dc3232;
-			}
-			.knowledge-provider-form.status-checking {
-				border-right-color: #f0ad4e;
-			}
-		</style>';
 		echo '<h1>AI Configuration</h1>';
 		echo '<p>Configure the AI providers for your knowledge base. Drag and drop to reorder priority.</p>';
 		
@@ -346,6 +390,8 @@ class AdminMenuRegistrar {
 		echo '<tr id="field-row-key" style="display:none;"><th>API Key</th><td><input type="password" id="new_provider_key" class="regular-text"> <span class="knowledge-check-indicator" style="display:none; margin-left: 5px; color: #856404;"><span class="dashicons dashicons-update spin"></span> Checking...</span></td></tr>';
 		echo '<tr><th>Model</th><td>
 			<input type="text" id="new_provider_model" class="regular-text" list="knowledge_provider_models" placeholder="e.g. llama3" autocomplete="off">
+			<select id="new_provider_model_select" class="regular-text" style="display:none;"></select>
+			<span id="knowledge_model_status" style="margin-left: 10px; font-size: 12px; color: #666;"></span>
 			<datalist id="knowledge_provider_models"></datalist>
 			</td></tr>';
 		
@@ -371,19 +417,148 @@ class AdminMenuRegistrar {
 	}
 
 	public function render_ingestion(): void {
-		// Handle Form Submission
+		// Handle Bulk Form Submission
+		if ( isset( $_POST['knowledge_bulk_ingest_urls'] ) && check_admin_referer( 'knowledge_bulk_ingest_action' ) ) {
+			$raw_urls = explode( "\n", $_POST['knowledge_bulk_ingest_urls'] );
+			$user_id = get_current_user_id();
+			
+			// Filter valid URLs first
+			$valid_urls = [];
+			foreach ( $raw_urls as $line ) {
+				$line = trim( $line );
+				if ( ! empty( $line ) ) {
+					$url = esc_url_raw( $line );
+					if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
+						$valid_urls[] = $url;
+					}
+				}
+			}
+			
+			$count = count( $valid_urls );
+
+			if ( $count > 50 ) {
+				// Batch Mode for > 50 items
+				try {
+					$service = new \Knowledge\Service\Ingestion\BatchImportService();
+					$job_id = $service->create_job( $valid_urls, $user_id );
+					
+					// Trigger first run immediately
+					if ( ! wp_next_scheduled( 'knowledge_process_import_queue' ) ) {
+						wp_schedule_single_event( time(), 'knowledge_process_import_queue' );
+					}
+
+					set_transient( 'knowledge_ingest_result', [
+						'status'  => 'success',
+						'message' => "Started <strong>Batch Import Job #{$job_id}</strong> for <strong>$count</strong> URLs. <br>This large import will be processed in chunks to ensure reliability.",
+					], 60 );
+				} catch ( \Exception $e ) {
+					set_transient( 'knowledge_ingest_result', [
+						'status'  => 'error',
+						'message' => 'Batch Start Error: ' . esc_html( $e->getMessage() ),
+					], 60 );
+				}
+			} elseif ( $count > 0 ) {
+				// Legacy/Small Batch Mode (Staggered)
+				$scheduled = 0;
+				foreach ( $valid_urls as $url ) {
+					// Schedule Async Ingestion
+					// Stagger jobs by 5 seconds to prevent AI Provider overload and WP Cron race conditions
+					if ( ! wp_next_scheduled( 'knowledge_async_ingest', [ $url, $user_id ] ) ) {
+						wp_schedule_single_event( time() + ( $scheduled * 5 ), 'knowledge_async_ingest', [ $url, $user_id ] );
+						$scheduled++;
+					}
+				}
+
+				set_transient( 'knowledge_ingest_result', [
+					'status'  => 'success',
+					'message' => "Started background ingestion for <strong>$scheduled</strong> URLs.",
+				], 60 );
+			} else {
+				set_transient( 'knowledge_ingest_result', [
+					'status'  => 'error',
+					'message' => 'No valid URLs found.',
+				], 60 );
+			}
+		}
+
+		// Handle Single Form Submission
 		if ( isset( $_POST['knowledge_ingest_url'] ) && check_admin_referer( 'knowledge_ingest_action' ) ) {
 			$url = sanitize_text_field( $_POST['knowledge_ingest_url'] );
+			$user_id = get_current_user_id();
 			
 			// Schedule Async Ingestion
-			if ( ! wp_next_scheduled( 'knowledge_async_ingest', [ $url ] ) ) {
-				wp_schedule_single_event( time(), 'knowledge_async_ingest', [ $url ] );
+			if ( ! wp_next_scheduled( 'knowledge_async_ingest', [ $url, $user_id ] ) ) {
+				wp_schedule_single_event( time(), 'knowledge_async_ingest', [ $url, $user_id ] );
 				
 				// Set Processing Flag
 				set_transient( 'knowledge_ingest_processing', [
 					'url'        => $url,
 					'start_time' => time(),
 				], 600 ); // 10 minutes timeout
+			}
+		}
+
+		// Handle Karakeep Import
+		if ( isset( $_FILES['knowledge_karakeep_file'] ) && check_admin_referer( 'knowledge_karakeep_action' ) ) {
+			$file = $_FILES['knowledge_karakeep_file'];
+			
+			// Basic validation
+			$is_json_mime = $file['type'] === 'application/json';
+			$is_json_ext = substr( $file['name'], -5 ) === '.json';
+			
+			if ( ! $is_json_ext ) {
+				 set_transient( 'knowledge_ingest_result', [
+					'status'  => 'error',
+					'message' => 'Invalid file format. Please upload a .json file.',
+				], 60 );
+			} else {
+				$content = file_get_contents( $file['tmp_name'] );
+				$data = json_decode( $content, true );
+				
+				if ( ! isset( $data['bookmarks'] ) || ! is_array( $data['bookmarks'] ) ) {
+					 set_transient( 'knowledge_ingest_result', [
+						'status'  => 'error',
+						'message' => 'Invalid JSON structure. "bookmarks" array missing.',
+					], 60 );
+				} else {
+					$urls = [];
+					foreach ( $data['bookmarks'] as $b ) {
+						if ( isset( $b['content']['url'] ) ) {
+							$url = esc_url_raw( $b['content']['url'] );
+							if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
+								$urls[] = $url;
+							}
+						}
+					}
+					
+					if ( ! empty( $urls ) ) {
+						$user_id = get_current_user_id();
+						try {
+							$service = new \Knowledge\Service\Ingestion\BatchImportService();
+							$job_id = $service->create_job( $urls, $user_id );
+							
+							// Trigger first run immediately
+							if ( ! wp_next_scheduled( 'knowledge_process_import_queue' ) ) {
+								wp_schedule_single_event( time(), 'knowledge_process_import_queue' );
+							}
+
+							set_transient( 'knowledge_ingest_result', [
+								'status'  => 'success',
+								'message' => "Started <strong>Karakeep Import Job #{$job_id}</strong> for <strong>" . count( $urls ) . "</strong> URLs.",
+							], 60 );
+						} catch ( \Exception $e ) {
+							set_transient( 'knowledge_ingest_result', [
+								'status'  => 'error',
+								'message' => 'Import Error: ' . esc_html( $e->getMessage() ),
+							], 60 );
+						}
+					} else {
+						set_transient( 'knowledge_ingest_result', [
+							'status'  => 'error',
+							'message' => 'No valid URLs found in the import file.',
+						], 60 );
+					}
+				}
 			}
 		}
 
@@ -405,6 +580,10 @@ class AdminMenuRegistrar {
 
 		echo '<div class="wrap">';
 		echo '<h1>Ingest Content</h1>';
+		
+		// Single URL Form
+		echo '<div class="card" style="padding: 1em; max-width: 800px; margin-bottom: 20px;">';
+		echo '<h2>Single URL</h2>';
 		echo '<form method="post" action="">';
 		wp_nonce_field( 'knowledge_ingest_action' );
 		echo '<table class="form-table">';
@@ -414,13 +593,111 @@ class AdminMenuRegistrar {
 		echo submit_button( 'Ingest URL' );
 		echo '</form>';
 		echo '</div>';
+
+		// Bulk URL Form
+		echo '<div class="card" style="padding: 1em; max-width: 800px;">';
+		echo '<h2>Bulk Ingestion</h2>';
+		echo '<p class="description">Paste a series of URLs, each on their own line. You must check for duplicates before ingesting.</p>';
+		echo '<form method="post" action="" id="knowledge_bulk_form">';
+		wp_nonce_field( 'knowledge_bulk_ingest_action' );
+		// Add a specific nonce for the AJAX check
+		echo '<input type="hidden" id="knowledge_ingest_nonce" value="' . wp_create_nonce( 'knowledge_ingest_nonce' ) . '">';
+		
+		echo '<table class="form-table">';
+		echo '<tr><th scope="row"><label for="knowledge_bulk_urls">URLs</label></th>';
+		echo '<td>';
+		echo '<textarea name="knowledge_bulk_ingest_urls" id="knowledge_bulk_urls" rows="8" class="large-text code" placeholder="https://site1.com/article&#10;https://site2.com/post"></textarea>';
+		echo '<p id="knowledge_bulk_status" style="margin-top: 5px; font-weight: bold; display: none;"></p>';
+		echo '</td></tr>';
+		echo '</table>';
+		
+		echo '<div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">';
+		echo '<button type="button" id="knowledge_check_btn" class="button button-secondary">Check URLs</button>';
+		echo submit_button( 'Bulk Ingest', 'primary', 'submit', false, [ 'disabled' => 'disabled', 'id' => 'knowledge_bulk_submit' ] );
+		echo '<button type="button" id="knowledge_clear_btn" class="button">Clear</button>';
+		echo '</div>';
+		
+		echo '</form>';
+		echo '</div>';
+
+		// Karakeep Import Form
+		echo '<div class="card" style="padding: 1em; max-width: 800px; margin-top: 20px;">';
+		echo '<h2>Karakeep Import</h2>';
+		echo '<p class="description">Upload a Karakeep JSON export file to bulk ingest bookmarks.</p>';
+		echo '<form method="post" action="" enctype="multipart/form-data">';
+		wp_nonce_field( 'knowledge_karakeep_action' );
+		echo '<table class="form-table">';
+		echo '<tr><th scope="row"><label for="karakeep_file">JSON File</label></th>';
+		echo '<td><input type="file" name="knowledge_karakeep_file" id="karakeep_file" accept=".json" required></td></tr>';
+		echo '</table>';
+		echo submit_button( 'Upload & Process', 'primary', 'knowledge_karakeep_submit' );
+		echo '</form>';
+		echo '</div>';
+
+		echo '<script>
+		jQuery(document).ready(function($) {
+			var $textarea = $("#knowledge_bulk_urls");
+			var $submitBtn = $("#knowledge_bulk_submit");
+			var $checkBtn = $("#knowledge_check_btn");
+			var $clearBtn = $("#knowledge_clear_btn");
+			var $status = $("#knowledge_bulk_status");
+			var nonce = $("#knowledge_ingest_nonce").val();
+
+			// Disable submit on input
+			$textarea.on("input", function() {
+				$submitBtn.prop("disabled", true);
+				$status.hide();
+			});
+
+			// Clear Action
+			$clearBtn.on("click", function() {
+				$textarea.val("");
+				$submitBtn.prop("disabled", true);
+				$status.hide();
+			});
+
+			// Check Action
+			$checkBtn.on("click", function() {
+				var urls = $textarea.val();
+				if (!urls.trim()) {
+					alert("Please enter at least one URL.");
+					return;
+				}
+
+				$checkBtn.prop("disabled", true).text("Checking...");
+				
+				$.post(ajaxurl, {
+					action: "knowledge_check_duplicates",
+					nonce: nonce,
+					urls: urls
+				}, function(response) {
+					$checkBtn.prop("disabled", false).text("Check URLs");
+					
+					if (response.success) {
+						$textarea.val(response.data.cleaned_list);
+						$status.text(response.data.message).css("color", "green").show();
+						
+						if (response.data.cleaned_list.trim().length > 0) {
+							$submitBtn.prop("disabled", false);
+						} else {
+							$submitBtn.prop("disabled", true);
+						}
+					} else {
+						alert("Error: " + response.data);
+					}
+				});
+			});
+		});
+		</script>';
+
+		echo '</div>';
 	}
 
-	public static function process_async_ingestion( string $url ): void {
+	public static function process_async_ingestion( string $url, int $user_id = 0, int $job_id = 0 ): void {
 		try {
 			// Manual instantiation for MVP
 			$service = new \Knowledge\Service\Ingestion\IngestionService();
-			$version = $service->ingest_url( $url );
+			$version = $service->ingest_url( $url, $user_id );
 			
 			set_transient( 'knowledge_ingest_result', [
 				'status'  => 'success',
@@ -435,6 +712,11 @@ class AdminMenuRegistrar {
 			
 			// Log persistent failure
 			\Knowledge\Infrastructure\FailureLog::log( $url, $e->getMessage() );
+
+			// Log to Batch Job if applicable
+			if ( $job_id > 0 ) {
+				( new \Knowledge\Service\Ingestion\BatchImportService() )->log_failure( $job_id, $url, $e->getMessage() );
+			}
 		} finally {
 			// Clear processing flag
 			delete_transient( 'knowledge_ingest_processing' );
@@ -535,12 +817,40 @@ class AdminMenuRegistrar {
 	}
 
 	public function render_operations_overview(): void {
-		// Handle Manual AI Analysis
+		// Handle Batch Retry
+		if ( isset( $_POST['knowledge_batch_retry'] ) && check_admin_referer( 'knowledge_batch_action' ) ) {
+			$job_id = intval( $_POST['batch_job_id'] );
+			if ( $job_id > 0 ) {
+				// Reset status to pending
+				wp_update_post( [
+					'ID'          => $job_id,
+					'post_status' => 'pending',
+				] );
+				
+				// Schedule immediate run
+				if ( ! wp_next_scheduled( 'knowledge_process_import_queue' ) ) {
+					wp_schedule_single_event( time(), 'knowledge_process_import_queue' );
+				}
+				
+				echo '<div class="notice notice-success"><p>Batch Job #' . $job_id . ' queued for retry.</p></div>';
+			}
+		}
+
+		// Handle Batch Delete
+		if ( isset( $_POST['knowledge_batch_delete'] ) && check_admin_referer( 'knowledge_batch_action' ) ) {
+			$job_id = intval( $_POST['batch_job_id'] );
+			if ( $job_id > 0 ) {
+				( new \Knowledge\Service\Ingestion\BatchImportService() )->delete_job( $job_id );
+				echo '<div class="notice notice-success"><p>Batch Job #' . $job_id . ' deleted.</p></div>';
+			}
+		}
+
+		// Handle Manual AI Analysis (Bulk Scheduling)
 		if ( isset( $_POST['knowledge_run_ai_analysis'] ) && check_admin_referer( 'knowledge_run_ai_analysis' ) ) {
-			// Find articles with no category or explicitly requested
+			// Find articles with no category
 			$articles = get_posts( [
 				'post_type'      => 'kb_article',
-				'posts_per_page' => 5, // Limit to 5 to avoid timeout
+				'posts_per_page' => -1, // Get all uncategorized
 				'tax_query'      => [
 					[
 						'taxonomy' => 'kb_category',
@@ -550,6 +860,8 @@ class AdminMenuRegistrar {
 			] );
 
 			$count = 0;
+			$scheduled_count = 0;
+			
 			foreach ( $articles as $article ) {
 				// Find latest version
 				$versions = get_posts( [
@@ -563,16 +875,24 @@ class AdminMenuRegistrar {
 				if ( ! empty( $versions ) ) {
 					$version_uuid = get_post_meta( $versions[0]->ID, '_kb_version_uuid', true );
 					if ( $version_uuid ) {
-						try {
-							\Knowledge\Service\AI\AIAnalysisService::handle_analysis_job( $version_uuid, $article->ID );
-							$count++;
-						} catch ( \Exception $e ) {
-							error_log( "Manual AI Analysis failed for Article {$article->ID}: " . $e->getMessage() );
+						// Schedule event (staggered by 2 seconds)
+						$delay = $scheduled_count * 2;
+						
+						// Check if already scheduled
+						if ( ! wp_next_scheduled( 'knowledge_ai_analyze_article', [ $version_uuid, $article->ID ] ) ) {
+							wp_schedule_single_event( time() + $delay, 'knowledge_ai_analyze_article', [ $version_uuid, $article->ID ] );
+							$scheduled_count++;
 						}
+						$count++;
 					}
 				}
 			}
-			echo '<div class="notice notice-success"><p>Processed AI Analysis for ' . intval( $count ) . ' articles.</p></div>';
+			
+			if ( $scheduled_count > 0 ) {
+				echo '<div class="notice notice-success"><p>Scheduled background AI Analysis for ' . intval( $scheduled_count ) . ' articles (Total Uncategorized: ' . intval( $count ) . '). Jobs will process sequentially.</p></div>';
+			} else {
+				echo '<div class="notice notice-info"><p>No new analysis jobs scheduled. ' . intval( $count ) . ' articles checked.</p></div>';
+			}
 		}
 
 		if ( isset( $_POST['knowledge_flush_rewrite'] ) && check_admin_referer( 'knowledge_flush_rewrite' ) ) {
@@ -580,28 +900,61 @@ class AdminMenuRegistrar {
 			echo '<div class="notice notice-success"><p>Rewrite rules flushed successfully.</p></div>';
 		}
 		
-		// Handle Failure Actions
-		if ( isset( $_POST['knowledge_failure_action'] ) && check_admin_referer( 'knowledge_failure_action' ) ) {
-			$action = sanitize_text_field( $_POST['knowledge_failure_action'] );
-			$id     = sanitize_text_field( $_POST['knowledge_failure_id'] );
-			$url    = sanitize_text_field( $_POST['knowledge_failure_url'] );
+		// Handle Failure Actions (Bulk & Single)
+		if ( isset( $_POST['knowledge_failure_nonce'] ) && check_admin_referer( 'knowledge_failure_action', 'knowledge_failure_nonce' ) ) {
+			$action = '';
+			$ids    = [];
 
-			if ( $action === 'resubmit' ) {
-				// Reschedule
-				if ( ! wp_next_scheduled( 'knowledge_async_ingest', [ $url ] ) ) {
-					wp_schedule_single_event( time(), 'knowledge_async_ingest', [ $url ] );
-					// Set processing flag immediately to reflect status
-					set_transient( 'knowledge_ingest_processing', [
-						'url'        => $url,
-						'start_time' => time(),
-					], 600 );
+			// Check Bulk
+			if ( isset( $_POST['knowledge_apply_bulk'] ) && ! empty( $_POST['knowledge_bulk_action'] ) && $_POST['knowledge_bulk_action'] !== '-1' ) {
+				$action = sanitize_text_field( $_POST['knowledge_bulk_action'] );
+				$ids    = isset( $_POST['failure_ids'] ) ? array_map( 'sanitize_text_field', $_POST['failure_ids'] ) : [];
+			}
+			// Check Single (Button value="action|id")
+			elseif ( isset( $_POST['knowledge_single_action'] ) ) {
+				$parts = explode( '|', sanitize_text_field( $_POST['knowledge_single_action'] ) );
+				if ( count( $parts ) === 2 ) {
+					$action = $parts[0];
+					$ids    = [ $parts[1] ];
 				}
-				// Remove from failure log
-				\Knowledge\Infrastructure\FailureLog::dismiss( $id );
-				echo '<div class="notice notice-success"><p>Job resubmitted: ' . esc_html( $url ) . '</p></div>';
-			} elseif ( $action === 'dismiss' ) {
-				\Knowledge\Infrastructure\FailureLog::dismiss( $id );
-				echo '<div class="notice notice-success"><p>Failure log dismissed.</p></div>';
+			}
+
+			if ( ! empty( $ids ) && in_array( $action, [ 'resubmit', 'dismiss' ] ) ) {
+				$failures = \Knowledge\Infrastructure\FailureLog::get_failures();
+				$count    = 0;
+				
+				foreach ( $ids as $id ) {
+					// Find failure data
+					$fail_data = null;
+					foreach ( $failures as $f ) {
+						if ( $f['id'] === $id ) {
+							$fail_data = $f;
+							break;
+						}
+					}
+
+					if ( $action === 'resubmit' && $fail_data ) {
+						// Reschedule
+						if ( ! wp_next_scheduled( 'knowledge_async_ingest', [ $fail_data['url'] ] ) ) {
+							wp_schedule_single_event( time(), 'knowledge_async_ingest', [ $fail_data['url'] ] );
+							// Set processing flag immediately to reflect status
+							set_transient( 'knowledge_ingest_processing', [
+								'url'        => $fail_data['url'],
+								'start_time' => time(),
+							], 600 );
+						}
+						// Remove from failure log
+						\Knowledge\Infrastructure\FailureLog::dismiss( $id );
+						$count++;
+					} elseif ( $action === 'dismiss' ) {
+						\Knowledge\Infrastructure\FailureLog::dismiss( $id );
+						$count++;
+					}
+				}
+
+				if ( $count > 0 ) {
+					echo '<div class="notice notice-success"><p>Successfully ' . ( $action === 'resubmit' ? 'resubmitted' : 'dismissed' ) . ' ' . intval( $count ) . ' items.</p></div>';
+				}
 			}
 		}
 
@@ -649,6 +1002,64 @@ class AdminMenuRegistrar {
 		echo '</tbody></table>';
 		echo '</div>';
 
+		// 1.5 Batch Jobs Section
+		$batch_jobs = get_posts( [
+			'post_type'      => 'kb_import_job',
+			'post_status'    => 'any',
+			'posts_per_page' => 10,
+			'orderby'        => 'date',
+			'order'          => 'DESC',
+		] );
+
+		if ( ! empty( $batch_jobs ) ) {
+			echo '<div class="card" style="max-width: 800px; padding: 1em; margin-bottom: 20px;">';
+			echo '<h3>Batch Import Jobs</h3>';
+			echo '<table class="widefat striped">';
+			echo '<thead><tr><th>Job</th><th>Date</th><th>Status</th><th>Progress</th><th>Actions</th></tr></thead>';
+			echo '<tbody>';
+			foreach ( $batch_jobs as $job ) {
+				$total = get_post_meta( $job->ID, '_kb_import_total', true );
+				$processed = get_post_meta( $job->ID, '_kb_import_processed', true );
+				$failed_count = get_post_meta( $job->ID, '_kb_import_failed', true );
+				
+				$status_colors = [
+					'pending'    => '#fff',
+					'processing' => '#f0f0f1',
+					'publish'    => '#d4edda', // completed
+					'failed'     => '#f8d7da',
+				];
+				$bg = $status_colors[ $job->post_status ] ?? '#fff';
+				$status_label = ( $job->post_status === 'publish' ) ? 'COMPLETED' : strtoupper( $job->post_status );
+				
+				echo '<tr style="background-color: ' . esc_attr( $bg ) . ';">';
+				echo '<td>' . esc_html( $job->post_title ) . ' (ID: ' . $job->ID . ')</td>';
+				echo '<td>' . get_the_date( 'Y-m-d H:i:s', $job ) . '</td>';
+				echo '<td><strong>' . esc_html( $status_label ) . '</strong></td>';
+				echo '<td>' . intval( $processed ) . ' / ' . intval( $total ) . ' (' . intval( $failed_count ) . ' failed)</td>';
+				echo '<td>';
+				// Add Retry/Resume button if failed or pending
+				if ( $job->post_status === 'failed' || $job->post_status === 'pending' ) {
+					echo '<form method="post" action="" style="display:inline; margin-right: 5px;">';
+					wp_nonce_field( 'knowledge_batch_action' );
+					echo '<input type="hidden" name="batch_job_id" value="' . $job->ID . '">';
+					echo '<button type="submit" name="knowledge_batch_retry" value="1" class="button button-small">Retry/Resume</button>';
+					echo '</form>';
+				}
+				
+				// Add Delete Button (Always available)
+				echo '<form method="post" action="" style="display:inline;" onsubmit="return confirm(\'Are you sure you want to delete this job and its logs?\');">';
+				wp_nonce_field( 'knowledge_batch_action' );
+				echo '<input type="hidden" name="batch_job_id" value="' . $job->ID . '">';
+				echo '<button type="submit" name="knowledge_batch_delete" value="1" class="button button-small button-link-delete" style="color: #a00; border-color: #d63638; text-decoration: none;">Delete</button>';
+				echo '</form>';
+				
+				echo '</td>';
+				echo '</tr>';
+			}
+			echo '</tbody></table>';
+			echo '</div>';
+		}
+
 		// 2. Queue Section
 		echo '<div class="card" style="max-width: 800px; padding: 1em; margin-bottom: 20px;">';
 		echo '<h3>Background Jobs & Queue</h3>';
@@ -658,26 +1069,40 @@ class AdminMenuRegistrar {
 		if ( ! empty( $failures ) ) {
 			echo '<div style="background: #fff5f5; border-left: 4px solid #dc3232; padding: 10px; margin-bottom: 20px;">';
 			echo '<h4 style="margin-top: 0; color: #dc3232;">Failed Ingestions</h4>';
+			
+			echo '<form method="post" action="">';
+			wp_nonce_field( 'knowledge_failure_action', 'knowledge_failure_nonce' );
+			
+			// Bulk Controls
+			echo '<div class="alignleft actions bulkactions" style="margin-bottom: 10px;">';
+			echo '<select name="knowledge_bulk_action">';
+			echo '<option value="-1">Bulk Actions</option>';
+			echo '<option value="resubmit">Resubmit</option>';
+			echo '<option value="dismiss">Delete</option>';
+			echo '</select>';
+			echo '<input type="submit" name="knowledge_apply_bulk" class="button action" value="Apply">';
+			echo '</div>';
+			
 			echo '<table class="widefat striped">';
-			echo '<thead><tr><th>Time</th><th>URL</th><th>Error</th><th>Actions</th></tr></thead>';
+			echo '<thead><tr>';
+			echo '<td id="cb" class="manage-column column-cb check-column"><input type="checkbox" id="cb-select-all-1" onclick="document.querySelectorAll(\'.failure-cb\').forEach(cb => cb.checked = this.checked);"></td>';
+			echo '<th>Time</th><th>URL</th><th>Error</th><th>Actions</th>';
+			echo '</tr></thead>';
 			echo '<tbody>';
 			foreach ( $failures as $fail ) {
 				echo '<tr>';
+				echo '<th scope="row" class="check-column"><input type="checkbox" name="failure_ids[]" value="' . esc_attr( $fail['id'] ) . '" class="failure-cb"></th>';
 				echo '<td>' . human_time_diff( $fail['timestamp'] ) . ' ago</td>';
 				echo '<td>' . esc_html( $fail['url'] ) . '</td>';
 				echo '<td>' . esc_html( $fail['error'] ) . '</td>';
 				echo '<td>
-					<form method="post" action="" style="display:inline;">
-						' . wp_nonce_field( 'knowledge_failure_action', '_wpnonce', true, false ) . '
-						<input type="hidden" name="knowledge_failure_id" value="' . esc_attr( $fail['id'] ) . '">
-						<input type="hidden" name="knowledge_failure_url" value="' . esc_attr( $fail['url'] ) . '">
-						<button type="submit" name="knowledge_failure_action" value="resubmit" class="button button-small button-primary">Resubmit</button>
-						<button type="submit" name="knowledge_failure_action" value="dismiss" class="button button-small">Dismiss</button>
-					</form>
+					<button type="submit" name="knowledge_single_action" value="resubmit|' . esc_attr( $fail['id'] ) . '" class="button button-small button-primary">Resubmit</button>
+					<button type="submit" name="knowledge_single_action" value="dismiss|' . esc_attr( $fail['id'] ) . '" class="button button-small">Delete</button>
 				</td>';
 				echo '</tr>';
 			}
 			echo '</tbody></table>';
+			echo '</form>';
 			echo '</div>';
 		}
 		
@@ -797,10 +1222,10 @@ class AdminMenuRegistrar {
 		echo '<div class="card" style="max-width: 800px; padding: 1em; margin-bottom: 20px;">';
 		echo '<h3>System Maintenance</h3>';
 		
-		echo '<p><strong>Run AI Analysis:</strong> Process up to 5 uncategorized articles immediately.</p>';
+		echo '<p><strong>Run AI Analysis:</strong> Schedule background analysis for ALL uncategorized articles.</p>';
 		echo '<form method="post" action="">';
 		wp_nonce_field( 'knowledge_run_ai_analysis' );
-		echo submit_button( 'Process Uncategorized Articles', 'primary', 'knowledge_run_ai_analysis' );
+		echo submit_button( 'Schedule Bulk Analysis', 'primary', 'knowledge_run_ai_analysis' );
 		echo '</form>';
 		echo '<hr>';
 

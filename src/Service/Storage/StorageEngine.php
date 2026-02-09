@@ -8,7 +8,7 @@ use Knowledge\Domain\ValueObject\Source;
 
 class StorageEngine {
 
-	public function store( Source $source, string $title, string $content, array $extra_metadata = [], ?string $featured_image_path = null ): Version {
+	public function store( Source $source, string $title, string $content, array $extra_metadata = [], ?string $featured_image_path = null, int $author_id = 0 ): Version {
 		$hash = md5( $content );
 
 		// 1. Check for Existing Article
@@ -22,7 +22,7 @@ class StorageEngine {
 			}
 		} else {
 			// Create New Article
-			$article_id = $this->create_article( $title, $source );
+			$article_id = $this->create_article( $title, $source, $author_id );
 		}
 		
 		// 1.5 Handle Featured Image (if available and not set)
@@ -65,7 +65,7 @@ class StorageEngine {
 		$path = $final_dir . '/' . $filename;
 
 		// 3. Create Version Post
-		$version_id = wp_insert_post( [
+		$version_args = [
 			'post_title'  => "Version " . date( 'Y-m-d H:i:s' ),
 			'post_type'   => 'kb_version',
 			'post_status' => 'publish', // Internal status
@@ -76,7 +76,13 @@ class StorageEngine {
 				'_kb_content_hash' => $hash,
 				'_kb_file_path'    => $uuid . '/' . $filename,
 			],
-		] );
+		];
+
+		if ( $author_id > 0 ) {
+			$version_args['post_author'] = $author_id;
+		}
+
+		$version_id = wp_insert_post( $version_args );
 
 		if ( is_wp_error( $version_id ) ) {
 			throw new \RuntimeException( 'Failed to create Version post.' );
@@ -107,15 +113,21 @@ class StorageEngine {
 		return $query->posts[0] ?? null;
 	}
 
-	private function create_article( string $title, Source $source ): int {
-		$article_id = wp_insert_post( [
+	private function create_article( string $title, Source $source, int $author_id = 0 ): int {
+		$args = [
 			'post_title'  => $title,
 			'post_type'   => 'kb_article',
 			'post_status' => 'publish',
 			'meta_input'  => [
 				'_kb_source_url' => $source->get_url(),
 			],
-		] );
+		];
+
+		if ( $author_id > 0 ) {
+			$args['post_author'] = $author_id;
+		}
+
+		$article_id = wp_insert_post( $args );
 
 		if ( is_wp_error( $article_id ) ) {
 			throw new \RuntimeException( 'Failed to create Article post.' );

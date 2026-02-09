@@ -12,6 +12,51 @@ class AdminColumnsRegistrar {
 		// Version Columns
 		add_filter( 'manage_kb_version_posts_columns', [ $this, 'add_version_columns' ] );
 		add_action( 'manage_kb_version_posts_custom_column', [ $this, 'render_version_column' ], 10, 2 );
+
+		// Row Actions (Tooltip)
+		add_filter( 'post_row_actions', [ $this, 'add_hover_tooltip' ], 10, 2 );
+
+		// Enqueue Styles
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_styles' ] );
+	}
+
+	public function enqueue_styles( $hook ): void {
+		global $post_type;
+		if ( $hook === 'edit.php' && $post_type === 'kb_article' ) {
+			wp_enqueue_style(
+				'knowledge-admin',
+				plugin_dir_url( dirname( __DIR__ ) . '/knowledge.php' ) . 'assets/css/knowledge-admin.css',
+				[],
+				'1.0.0'
+			);
+		}
+	}
+
+	public function add_hover_tooltip( array $actions, \WP_Post $post ): array {
+		if ( $post->post_type !== 'kb_article' ) {
+			return $actions;
+		}
+
+		$summary = get_post_meta( $post->ID, '_kb_ai_summary', true );
+		$tags    = get_the_term_list( $post->ID, 'kb_tag', '', ', ' );
+
+		if ( ! $summary && ! $tags ) {
+			return $actions;
+		}
+
+		$tooltip_html = '<div class="knowledge-tooltip-content">';
+		if ( $summary ) {
+			$tooltip_html .= '<div class="knowledge-tooltip-section"><strong>Summary:</strong> ' . esc_html( $summary ) . '</div>';
+		}
+		if ( $tags ) {
+			$tooltip_html .= '<div class="knowledge-tooltip-section"><strong>Tags:</strong> ' . $tags . '</div>';
+		}
+		$tooltip_html .= '</div>';
+
+		// We add a hidden action that serves as the container
+		$actions['knowledge_info'] = '<span class="knowledge-tooltip-trigger">Info ' . $tooltip_html . '</span>';
+
+		return $actions;
 	}
 
 	public function add_article_columns( array $columns ): array {

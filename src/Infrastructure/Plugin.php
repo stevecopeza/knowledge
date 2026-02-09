@@ -2,6 +2,9 @@
 
 namespace Knowledge\Infrastructure;
 
+use Knowledge\Service\Search\SearchIndexService;
+use Knowledge\Integration\Elementor\ElementorIntegration;
+
 class Plugin {
 
 	/**
@@ -54,8 +57,15 @@ class Plugin {
 		$frontend_renderer = new FrontendRenderer();
 		$frontend_renderer->init();
 
+		// Initialize Elementor Integration
+		$elementor_integration = new ElementorIntegration();
+		$elementor_integration->init();
+
 		// Register Async Ingestion Handler
-		add_action( 'knowledge_async_ingest', [ AdminMenuRegistrar::class, 'process_async_ingestion' ] );
+		add_action( 'knowledge_async_ingest', [ AdminMenuRegistrar::class, 'process_async_ingestion' ], 10, 3 );
+
+		// Register Batch Import Queue Processor
+		add_action( 'knowledge_process_import_queue', [ \Knowledge\Service\Ingestion\BatchImportService::class, 'process_queue' ] );
 
 		// Register AI Embedding Job
 		add_action( 'kb_version_created', [ \Knowledge\Service\AI\EmbeddingJob::class, 'schedule' ], 10, 4 );

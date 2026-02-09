@@ -72,6 +72,9 @@ jQuery(document).ready(function($) {
         $('#new_provider_model').val($row.find('input[name*="[config][model]"]').val());
         $('#new_provider_key').val($row.find('input[name*="[config][api_key]"]').val());
 
+        // Trigger connection check to populate models immediately
+        checkFormConnection();
+
         // Update UI
         $('#knowledge-provider-form-title').text('Edit Provider');
         $('#knowledge-save-new-provider').text('Update Provider');
@@ -87,7 +90,8 @@ jQuery(document).ready(function($) {
         $('#editing_provider_id').val('');
         $('#new_provider_name').val('');
         $('#new_provider_url').val('');
-        $('#new_provider_model').val('');
+        $('#new_provider_model').val('').show(); // Reset and show input
+        $('#new_provider_model_select').empty().hide(); // Reset and hide select
         $('#new_provider_key').val('');
         $('#knowledge-provider-form-title').text('Add New Provider');
         $('#knowledge-save-new-provider').text('Add to List');
@@ -96,6 +100,7 @@ jQuery(document).ready(function($) {
         $('#knowledge-add-provider-form').removeClass('status-connected status-disconnected status-checking');
         $('.knowledge-check-indicator').hide();
         $('#knowledge_provider_models').empty();
+        $('#knowledge_model_status').text('');
     }
 
     // Check Connection in Form
@@ -110,9 +115,13 @@ jQuery(document).ready(function($) {
 
         var $form = $('#knowledge-add-provider-form');
         var $indicators = $('.knowledge-check-indicator');
+        var $modelStatus = $('#knowledge_model_status');
+        var $input = $('#new_provider_model');
+        var $select = $('#new_provider_model_select');
         
         $form.removeClass('status-connected status-disconnected').addClass('status-checking');
         $indicators.fadeIn();
+        $modelStatus.text('Checking availability...');
 
         $.ajax({
             url: knowledgeSettings.ajaxurl,
@@ -128,6 +137,7 @@ jQuery(document).ready(function($) {
                 }
             },
             success: function(response) {
+                console.log('Connection Check Response:', response);
                 $indicators.fadeOut();
                 $form.removeClass('status-checking');
                 
@@ -137,18 +147,64 @@ jQuery(document).ready(function($) {
                     // Populate Models
                     var $datalist = $('#knowledge_provider_models');
                     $datalist.empty();
+                    $select.empty();
                     
                     if (response.data.models && response.data.models.length > 0) {
+                        var currentVal = $input.val();
+                        var foundCurrent = false;
+
                         response.data.models.forEach(function(m) {
-                            $datalist.append('<option value="' + m + '">');
+                            // Datalist option
+                            $datalist.append($('<option>').attr('value', m));
+                            
+                            // Select option
+                            var $opt = $('<option>').attr('value', m).text(m);
+                            if (m === currentVal) {
+                                $opt.attr('selected', true);
+                                foundCurrent = true;
+                            }
+                            $select.append($opt);
                         });
+
+                        // If current value is set but not in list, add it as a custom option
+                        if (currentVal && !foundCurrent) {
+                             var $opt = $('<option>').attr('value', currentVal).text(currentVal + ' (Current)').attr('selected', true);
+                             $select.prepend($opt);
+                        }
+                        
+                        // Switch to Select UI
+                        $input.hide();
+                        $select.show();
+
+                        // Visual feedback
+                        $modelStatus.text(response.data.models.length + ' models found.');
+                        $modelStatus.css('color', '#00a32a');
+                    } else {
+                        // Fallback to Input if no models found
+                        $input.show();
+                        $select.hide();
+                        
+                        console.warn('No models returned from provider.');
+                        $datalist.append('<option value="No models found">');
+                        $modelStatus.text('Connection successful, but no models found.');
+                        $modelStatus.css('color', '#d63638');
                     }
                 } else {
+                    $input.show();
+                    $select.hide();
                     $form.addClass('status-disconnected');
+                    $modelStatus.text('Connection failed: ' + (response.data || 'Unknown error'));
+                    $modelStatus.css('color', '#d63638');
+                    console.error('Connection failed:', response.data);
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
                 $indicators.fadeOut();
+                $input.show();
+                $select.hide();
+                $modelStatus.text('Network error.');
+                $modelStatus.css('color', '#d63638');
                 $form.removeClass('status-checking').addClass('status-disconnected');
             }
         });
@@ -157,6 +213,11 @@ jQuery(document).ready(function($) {
     // Trigger checks on blur
     $('#new_provider_url, #new_provider_key').on('blur', function() {
         checkFormConnection();
+    });
+
+    // Update hidden input when select changes
+    $('#new_provider_model_select').on('change', function() {
+        $('#new_provider_model').val($(this).val());
     });
 
     // Remove Provider
