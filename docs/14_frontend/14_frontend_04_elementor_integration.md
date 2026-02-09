@@ -39,6 +39,8 @@ Controls the structural arrangement and visible elements.
 - **Show Badges (Tags):** Toggle tag badges displayed on hover (Default: Yes).
 - **Show Meta:** Toggle metadata footer (Source, Date, Options button).
 - **Show Avatar:** Toggle the author's avatar in the footer (Default: No).
+- **Show Re-check Button:** Toggle the "Re-check" button.
+    - **Note:** This button appears on the card's hover state (or on tap for mobile) and allows users to flag an article for source verification.
 - **Pagination Type:** Choose how to load more content:
     - **None:** Display only the initial batch.
     - **Numeric:** Standard page numbers (1, 2, 3...).
@@ -98,79 +100,43 @@ Customize the pagination links (if enabled).
 - **Show Other Content:** Toggle (Yes/No). When "No", hides other page content (like a default Archive) when search results are active.
     - **Content Selector to Hide:** CSS selector for the content to hide (Default targets Knowledge Archives).
 
-#### AI Configuration (Content Tab)
-*Available when Search Mode is 'AI / Chat'.*
+#### AI Configuration (Content Tab - AI Mode Only)
 - **AI Mode:**
-    - **RAG Only:** Answers based *only* on retrieved context from the knowledge base (Strict).
-    - **LLM Only:** Answers based on general model knowledge (Creative).
-    - **Combined:** Merges RAG context with general knowledge.
-    - **Combined (Prioritised):** Prioritizes RAG context but fills gaps with LLM.
-    - **Combined (Balanced):** Equal weight to both.
-- **Filter by Category:** Restrict search/context to specific Knowledge Categories. (Multi-select).
-
-#### Layout (Content Tab)
-- **Input Size:** Small, Medium, Large.
-- **Button Position:** Inline (attached) or Separate.
+    - **RAG Only (Strict):** Answers only from knowledge base context.
+    - **LLM Only (Creative):** General AI chat without context.
+    - **Combined:** Uses RAG context but allows general knowledge fallback.
+- **Filter by Category:** Restrict the AI's search scope to specific knowledge categories.
 
 #### Results Layout (Content Tab)
-*Controls the grid display of search results (for both Standard and AI modes).*
-- **Columns:** Responsive control for grid columns.
-- **Title Length:** Limit title characters.
-- **Show Image:** Toggle featured image.
-- **Show Summary:** Toggle summary text.
-- **Show Category, Badges, Meta, Avatar:** Toggle various card elements.
-- **Show Re-check Button:** Toggle a "Re-check" button on the card hover state to request article update/ingestion.
+Controls how search results are displayed (Standard Mode).
+- **Columns:** Responsive grid columns (same as Archive).
+- **Show Image/Summary/Category/Tags/Meta:** Toggle visibility of card elements.
+- **Show Re-check Button:** Enable the source verification request button on results.
 
 ### 3.2 Style Controls (Search)
 
-#### Input Field
-- **Typography:** Font settings for input text and placeholder.
-- **Colors:** Text, Background, Border, Focus colors.
-- **Border Radius:** Rounding of the input field.
-- **Padding:** Internal spacing.
-
-#### Button
-- **Typography:** Font settings.
-- **Colors:** Normal and Hover states (Text & Background).
-- **Border:** Width, Type, Radius.
-
-#### AI Response Box
-*Controls the appearance of the AI answer container (only in AI Mode).*
-- **Typography:** Font settings for the answer text.
-- **Container:** Background color, padding, border, shadow.
-- **Provenance:** Style for the "Sources" or "Context" citations.
+#### Input Field & Button
+- **Typography & Colors:** Full control over the search input text, placeholder, and background.
+- **Border & Radius:** Style the input box and search button (including hover states).
+- **Padding:** Adjust internal spacing for comfortable typing.
 
 #### Results Divider
-*Controls the visual separator between AI/Search inputs and the Results Grid.*
+Style the separator between the search bar and the results grid.
 - **Show Divider:** Toggle visibility.
-- **Style:** Solid, Double, Dotted, Dashed.
-- **Color, Weight, Width, Gap:** Full styling control.
+- **Style:** Solid, Dotted, Dashed, etc.
+- **Color & Weight:** Custom appearance.
+- **Gap:** Spacing above and below the divider.
 
-#### Results Card Styling
-*Includes full styling controls for the results grid cards, identical to the Archive Widget:*
-- **Results Card:** Borders, Shadows.
-- **Results Content:** Typography, Colors, Margins.
-- **Results Summary:** Typography, Colors.
-- **Results Tags:** Colors, Backgrounds, Borders.
-- **Results Category:** Colors, Backgrounds, Borders.
+#### Result Cards
+*The Search widget shares the same comprehensive card styling options as the Archive widget:*
+- **Card:** Borders, Shadows, Radius.
+- **Content:** Title typography, Body padding.
+- **Badges:** Category and Tag styling.
+- **Summary:** Text color and typography.
 
-## 4. Usage Guide
-
-1.  **Edit a Page with Elementor.**
-2.  **Search for "Knowledge"** in the widget panel.
-3.  **Drag and Drop** the desired widget ("Archive" or "Search") onto your page.
-4.  **Configure:** Use the Content tab to set up queries or search modes.
-5.  **Style:** Use the Style tab to match your site's branding.
-
-## 5. Technical Details
-
-- **Archive Class:** `Knowledge\Integration\Elementor\Widgets\KnowledgeArchiveWidget`
-- **Search Class:** `Knowledge\Integration\Elementor\Widgets\KnowledgeSearchWidget`
-- **Base Class:** `\Elementor\Widget_Base`
-- **Rendering:** Uses `Knowledge\Infrastructure\FrontendRenderer::render_card()` for consistent output with the shortcode implementation.
-- **Performance:** Uses standard `WP_Query` and optimized asset loading.
-
-## 5. Troubleshooting
-
-- **Widget not appearing?** Ensure the Knowledge plugin is active and Elementor is installed/active.
-- **Styles missing?** The widget relies on the plugin's global CSS (`knowledge-frontend.css`). Ensure your theme doesn't aggressively dequeue plugin styles.
+#### AI Response Box (AI Mode Only)
+Style the container where the AI answer appears.
+- **Typography:** Font settings for the answer text.
+- **Background & Border:** Container appearance.
+- **Box Shadow:** Depth effects.
+- **Padding:** Internal spacing.

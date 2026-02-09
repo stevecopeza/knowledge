@@ -55,7 +55,7 @@ class ForkHandler {
 		// Index Content
 		$uuid = get_post_meta( $post_id, '_kb_fork_uuid', true );
 		if ( $uuid ) {
-			do_action( 'kb_fork_updated', $uuid, $post->post_title, $post->post_content );
+			do_action( 'kb_fork_updated', $uuid, $post->post_title, $post->post_content, $post_id );
 		}
 	}
 }

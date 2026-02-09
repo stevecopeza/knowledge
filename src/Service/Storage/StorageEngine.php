@@ -88,8 +88,12 @@ class StorageEngine {
 			throw new \RuntimeException( 'Failed to create Version post.' );
 		}
 
+		// Update Article Current Version and Reset Note Count
+		update_post_meta( $article_id, '_kb_current_version_uuid', $uuid );
+		update_post_meta( $article_id, '_kb_note_count', 0 );
+
 		// 4. Index Content (Trigger Search Indexer)
-		do_action( 'kb_version_created', $uuid, $title, $content, $metadata );
+		do_action( 'kb_version_created', $uuid, $title, $content, $metadata, $version_id );
 
 		return new Version(
 			$uuid,

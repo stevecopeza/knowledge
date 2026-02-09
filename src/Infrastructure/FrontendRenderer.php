@@ -17,6 +17,7 @@ class FrontendRenderer {
 	}
 
 	public function enqueue_assets(): void {
+		wp_enqueue_style( 'dashicons' );
 		wp_register_style( 'knowledge-frontend', false );
 		wp_enqueue_style( 'knowledge-frontend' );
 
@@ -30,9 +31,12 @@ class FrontendRenderer {
 
 		wp_localize_script( 'knowledge-frontend-js', 'knowledge_vars', [
 			'ajax_url'   => admin_url( 'admin-ajax.php' ),
+			'rest_url'   => esc_url_raw( rest_url() ),
+			'rest_nonce' => wp_create_nonce( 'wp_rest' ),
 			'nonce'      => wp_create_nonce( 'knowledge_load_more' ),
 			'chat_nonce' => wp_create_nonce( 'knowledge_chat_nonce' ),
 			'recheck_nonce' => wp_create_nonce( 'knowledge_recheck_nonce' ),
+			'is_logged_in' => is_user_logged_in(),
 		] );
 		
 		$css = "
@@ -165,12 +169,42 @@ class FrontendRenderer {
 				pointer-events: none; /* Let clicks pass through to card/image */
 			}
 			
-			.knowledge-card-floating-badges .knowledge-card-badge {
+			.knowledge-card-floating-badges-left {
+				position: absolute;
+				top: 12px;
+				left: 12px;
+				z-index: 5;
+				display: flex;
+				gap: 4px;
+				flex-wrap: wrap;
+				justify-content: flex-start;
+				pointer-events: none;
+			}
+
+			.knowledge-card-floating-badges .knowledge-card-badge,
+			.knowledge-card-floating-badges-left .knowledge-card-badge {
 				background: rgba(255, 255, 255, 0.9);
 				color: #333;
 				box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 				backdrop-filter: blur(4px);
 				pointer-events: auto; /* Re-enable clicks on badges if they are links (future proofing) */
+			}
+			
+			.knowledge-card-floating-badges .knowledge-indicator-notes,
+			.knowledge-card-floating-badges-left .knowledge-indicator-notes {
+				background-color: #fff3a0;
+				color: #92400e;
+				border: 1px solid #fde047;
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+			}
+			.knowledge-indicator-notes .dashicons {
+				font-size: 14px;
+				width: 14px;
+				height: 14px;
+				display: inline-block;
+				line-height: 1;
 			}
 
 			.knowledge-card-summary {
@@ -407,6 +441,323 @@ class FrontendRenderer {
 					transition-delay: 1s;
 				}
 			}
+
+			/* Annotation UI */
+			.kb-add-note-btn {
+				position: absolute;
+				z-index: 1000;
+				background: #333;
+				color: #fff;
+				border: none;
+				border-radius: 50%;
+				width: 32px;
+				height: 32px;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+				transition: transform 0.1s;
+			}
+			.kb-add-note-btn:hover {
+				transform: scale(1.1);
+			}
+			.kb-annotation-popover {
+				position: absolute;
+				z-index: 1000;
+				background: #fff;
+				border: 1px solid #ccc;
+				border-radius: 6px;
+				padding: 10px;
+				box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+				width: 300px;
+			}
+			.kb-annotation-popover textarea {
+				width: 100%;
+				height: 80px;
+				margin-bottom: 10px;
+				border: 1px solid #ddd;
+				border-radius: 4px;
+				padding: 8px;
+				font-family: inherit;
+			}
+			.kb-popover-actions {
+				display: flex;
+				justify-content: flex-end;
+				gap: 8px;
+			}
+			.kb-popover-actions button {
+				padding: 4px 12px;
+				border-radius: 4px;
+				cursor: pointer;
+				font-size: 13px;
+			}
+			.kb-popover-actions .kb-save {
+				background: #0073aa;
+				color: #fff;
+				border: none;
+			}
+			.kb-popover-actions .kb-cancel {
+				background: transparent;
+				border: 1px solid #ccc;
+				color: #555;
+			}
+			.kb-note-mode {
+				margin-right: auto;
+				padding: 2px;
+				font-size: 13px;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+				max-width: 120px;
+			}
+			.kb-note-quote {
+				margin: 0 0 5px 0;
+				padding: 5px 10px;
+				border-left: 3px solid #0073aa;
+				background: #f9f9f9;
+				font-style: italic;
+				color: #555;
+				font-size: 0.9em;
+			}
+			.kb-highlight {
+				background-color: #fff3a0;
+				cursor: pointer;
+				border-bottom: 2px solid #fce300;
+			}
+			.kb-highlight-pending {
+				background-color: #fff3a0; /* Same visual as saved highlight */
+				border-bottom: 2px solid #fce300;
+			}
+			
+			/* Sidebar */
+			.kb-notes-sidebar {
+				position: fixed;
+				top: 0;
+				right: 0;
+				bottom: 0;
+				width: 300px;
+				background: #fff;
+				box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+				z-index: 9999;
+				display: flex;
+				flex-direction: column;
+				padding: 20px;
+				transform: translateX(100%);
+				transition: transform 0.3s ease;
+			}
+			.kb-notes-sidebar.open {
+				transform: translateX(0);
+			}
+			.kb-sidebar-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin-bottom: 20px;
+				border-bottom: 1px solid #eee;
+				padding-bottom: 10px;
+			}
+			.kb-sidebar-header h3 { margin: 0; font-size: 1.2rem; }
+			.kb-close-sidebar {
+				background: none;
+				border: none;
+				font-size: 1.5rem;
+				cursor: pointer;
+				color: #555;
+			}
+			.kb-notes-list {
+				flex: 1;
+				overflow-y: auto;
+			}
+			.kb-note-item {
+				padding: 10px;
+				border-bottom: 1px solid #eee;
+				transition: background-color 0.3s;
+			}
+			.kb-note-item.kb-flash {
+				background-color: #fff3a0;
+			}
+			.kb-note-content {
+				font-size: 14px;
+				color: #333;
+				margin-bottom: 5px;
+			}
+			.kb-note-meta {
+				font-size: 11px;
+				color: #888;
+			}
+			.kb-note-tags {
+				margin-top: 5px;
+				margin-bottom: 5px;
+				display: flex;
+				flex-wrap: wrap;
+				gap: 4px;
+			}
+			.kb-note-tag {
+				background: #e5e7eb;
+				color: #374151;
+				border-radius: 12px;
+				padding: 2px 8px;
+				font-size: 11px;
+				font-weight: 500;
+			}
+			/* Tag Edit UI */
+			.kb-tag-edit-area {
+				margin-top: 10px;
+				border-top: 1px solid #eee;
+				padding-top: 10px;
+			}
+			.kb-current-tags {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 4px;
+				margin-bottom: 5px;
+			}
+			.kb-tag-pill {
+				background: #e5e7eb;
+				border-radius: 12px;
+				padding: 2px 8px;
+				font-size: 11px;
+				display: flex;
+				align-items: center;
+				gap: 4px;
+			}
+			.kb-tag-pill.kb-tag-text {
+				background: #dbeafe; /* Light blue */
+				color: #1e40af;
+			}
+			.kb-remove-tag {
+				cursor: pointer;
+				font-weight: bold;
+				color: #666;
+			}
+			.kb-remove-tag:hover {
+				color: #d63638;
+			}
+			.kb-tag-input-wrapper {
+				position: relative;
+				display: flex;
+				gap: 5px;
+			}
+			.kb-tag-input {
+				flex: 1;
+				border: 1px solid #ddd;
+				border-radius: 4px;
+				padding: 4px 8px;
+				font-size: 12px;
+			}
+			.kb-add-tag-btn {
+				padding: 4px 8px;
+				border: 1px solid #ddd;
+				background: #f0f0f0;
+				cursor: pointer;
+				border-radius: 4px;
+			}
+			.kb-tag-autocomplete {
+				position: absolute;
+				top: 100%;
+				left: 0;
+				right: 0;
+				background: #fff;
+				border: 1px solid #ccc;
+				box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+				list-style: none;
+				margin: 0;
+				padding: 0;
+				z-index: 100;
+				max-height: 150px;
+				overflow-y: auto;
+			}
+			.kb-tag-autocomplete li {
+				padding: 6px 10px;
+				cursor: pointer;
+				font-size: 12px;
+			}
+			.kb-tag-autocomplete li:hover {
+				background: #f0f0f0;
+			}
+			.kb-note-info {
+				margin-top: 10px;
+				border-top: 1px solid #f0f0f0;
+				padding-top: 8px;
+			}
+			.kb-note-author {
+				display: flex;
+				align-items: center;
+				margin-bottom: 4px;
+			}
+			.kb-note-avatar {
+				width: 24px;
+				height: 24px;
+				border-radius: 50%;
+				margin-right: 8px;
+				object-fit: cover;
+			}
+			.kb-note-author-name {
+				font-size: 12px;
+				font-weight: 500;
+				color: #333;
+			}
+			.kb-note-actions {
+				display: flex;
+				justify-content: flex-end;
+				gap: 5px;
+				margin-top: 5px;
+				opacity: 0;
+				transition: opacity 0.2s;
+			}
+			.kb-note-item:hover .kb-note-actions {
+				opacity: 1;
+			}
+			.kb-note-action-btn {
+				background: none;
+				border: none;
+				cursor: pointer;
+				color: #888;
+				padding: 2px 5px;
+				font-size: 12px;
+			}
+			.kb-note-action-btn:hover {
+				color: #0073aa;
+				background: #f0f0f0;
+				border-radius: 3px;
+			}
+			.kb-note-action-btn.delete:hover {
+				color: #d63638;
+			}
+			.kb-note-quote {
+				border-left: 4px solid #0073aa;
+				margin: 0 0 10px 0;
+				padding-left: 10px;
+				color: #666;
+				font-style: italic;
+			}
+			.kb-note-edit-area {
+				width: 100%;
+				min-height: 60px;
+				margin-top: 5px;
+				padding: 5px;
+				border: 1px solid #ddd;
+				border-radius: 4px;
+				font-family: inherit;
+			}
+			.kb-notes-toggle {
+				position: fixed;
+				bottom: 20px;
+				right: 20px;
+				z-index: 9990;
+				background: #0073aa;
+				color: #fff;
+				border: none;
+				border-radius: 50%;
+				width: 48px;
+				height: 48px;
+				cursor: pointer;
+				box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				font-size: 20px;
+			}
 		";
 		
 		wp_add_inline_style( 'knowledge-frontend', $css );
@@ -489,6 +840,10 @@ class FrontendRenderer {
 			'show_category'     => true,
 			'category_position' => 'inline', // 'inline' or 'top_right'
 			'show_avatar'       => false,
+			'show_note_count'      => true,
+			'note_count_position'  => 'top_right',
+			'note_count_icon'      => true,
+			'note_count_label'     => '',
 		];
 		$options = wp_parse_args( $options, $defaults );
 
@@ -518,6 +873,9 @@ class FrontendRenderer {
 		$floating_badges_html = '';
 		$hover_badges_html = '';
 		
+		$floating_items = [];
+		$floating_items_left = [];
+
 		if ( $options['show_category'] ) {
 			$cats = get_the_terms( $post_id, 'kb_category' );
 			if ( $cats && ! is_wp_error( $cats ) ) {
@@ -527,11 +885,47 @@ class FrontendRenderer {
 				}
 				
 				if ( 'top_right' === $options['category_position'] ) {
-					$floating_badges_html = sprintf( '<div class="knowledge-card-floating-badges">%s</div>', $badges_str );
+					$floating_items[] = $badges_str;
 				} else {
 					$body_badges_html = $badges_str;
 				}
 			}
+		}
+
+		// Note Indicator
+		if ( isset( $options['show_note_count'] ) && $options['show_note_count'] ) {
+			$note_count = (int) get_post_meta( $post_id, '_kb_note_count', true );
+			if ( $note_count > 0 ) {
+				$icon_html = isset($options['note_count_icon']) && $options['note_count_icon'] ? '<span class="dashicons dashicons-edit"></span>' : '';
+				$label_html = ! empty( $options['note_count_label'] ) ? esc_html( $options['note_count_label'] ) : '';
+				
+				// Ensure spacing if icon/label exists
+				$content_parts = [];
+				if ( $icon_html ) $content_parts[] = $icon_html;
+				if ( $label_html ) $content_parts[] = $label_html;
+				$content_parts[] = $note_count;
+
+				$inner_html = implode( ' ', $content_parts );
+
+				$indicator_html = sprintf( 
+					'<span class="knowledge-card-badge knowledge-indicator-notes" title="%d Notes">%s</span>', 
+					$note_count, 
+					$inner_html
+				);
+
+				if ( isset($options['note_count_position']) && 'top_left' === $options['note_count_position'] ) {
+					$floating_items_left[] = $indicator_html;
+				} else {
+					$floating_items[] = $indicator_html;
+				}
+			}
+		}
+
+		if ( ! empty( $floating_items ) ) {
+			$floating_badges_html .= sprintf( '<div class="knowledge-card-floating-badges">%s</div>', implode( '', $floating_items ) );
+		}
+		if ( ! empty( $floating_items_left ) ) {
+			$floating_badges_html .= sprintf( '<div class="knowledge-card-floating-badges-left">%s</div>', implode( '', $floating_items_left ) );
 		}
 
 		if ( $options['show_badges'] ) {
@@ -630,7 +1024,7 @@ class FrontendRenderer {
 
 		$recheck_btn_html = '';
 		$show_recheck = false;
-		if ( isset( $options['show_recheck_button'] ) ) {
+		if ( isset( $options['show_recheck_button'] ) && is_user_logged_in() ) {
 			if ( $options['show_recheck_button'] === 'yes' || $options['show_recheck_button'] === true ) {
 				$show_recheck = true;
 			}
@@ -747,6 +1141,11 @@ class FrontendRenderer {
 			return $content;
 		}
 
+		// Ensure we are processing the main post in the main loop
+		if ( ! in_the_loop() || get_the_ID() !== get_queried_object_id() ) {
+			return $content;
+		}
+
 		// Get current post ID
 		$post_id = get_the_ID();
 		if ( ! $post_id ) {
@@ -788,7 +1187,12 @@ class FrontendRenderer {
 
 		// Return injected content
 		// We append it to any existing content (usually empty for kb_article)
-		return $content . $file_content;
+		// Wrap in a container for JS targeting and Version UUID context
+		return $content . sprintf(
+			'<div class="kb-article-content" data-version-uuid="%s">%s</div>',
+			esc_attr( $uuid ),
+			$file_content
+		);
 	}
 
 	private function strip_title( string $html ): string {
@@ -864,6 +1268,10 @@ class FrontendRenderer {
 			'show_meta'         => ! empty( $options['show_meta'] ) && filter_var( $options['show_meta'], FILTER_VALIDATE_BOOLEAN ),
 			'show_avatar'       => ! empty( $options['show_avatar'] ) && filter_var( $options['show_avatar'], FILTER_VALIDATE_BOOLEAN ),
 			'show_recheck_button' => ! empty( $options['show_recheck_button'] ) && filter_var( $options['show_recheck_button'], FILTER_VALIDATE_BOOLEAN ),
+			'show_note_count'      => isset($options['show_note_count']) ? filter_var( $options['show_note_count'], FILTER_VALIDATE_BOOLEAN ) : true,
+			'note_count_position'  => isset( $options['note_count_position'] ) ? sanitize_text_field( $options['note_count_position'] ) : 'top_right',
+			'note_count_icon'      => isset($options['note_count_icon']) ? filter_var( $options['note_count_icon'], FILTER_VALIDATE_BOOLEAN ) : true,
+			'note_count_label'     => isset( $options['note_count_label'] ) ? sanitize_text_field( $options['note_count_label'] ) : '',
 		];
 
 		// Taxonomy Filters
@@ -954,6 +1362,10 @@ class FrontendRenderer {
 			'show_meta'         => ! empty( $options['show_meta'] ) && filter_var( $options['show_meta'], FILTER_VALIDATE_BOOLEAN ),
 			'show_avatar'       => ! empty( $options['show_avatar'] ) && filter_var( $options['show_avatar'], FILTER_VALIDATE_BOOLEAN ),
 			'show_recheck_button' => ! empty( $options['show_recheck_button'] ) && filter_var( $options['show_recheck_button'], FILTER_VALIDATE_BOOLEAN ),
+			'show_note_count'      => isset($options['show_note_count']) ? filter_var( $options['show_note_count'], FILTER_VALIDATE_BOOLEAN ) : true,
+			'note_count_position'  => isset( $options['note_count_position'] ) ? sanitize_text_field( $options['note_count_position'] ) : 'top_right',
+			'note_count_icon'      => isset($options['note_count_icon']) ? filter_var( $options['note_count_icon'], FILTER_VALIDATE_BOOLEAN ) : true,
+			'note_count_label'     => isset( $options['note_count_label'] ) ? sanitize_text_field( $options['note_count_label'] ) : '',
 		];
 
 		// Filter by Categories if provided

@@ -50,6 +50,7 @@ class KnowledgeArchiveWidget extends Widget_Base {
 		$this->register_query_controls();
 		$this->register_layout_controls();
 		$this->register_style_controls();
+		$this->register_style_note_count_controls();
 		$this->register_style_recheck_controls();
 	}
 
@@ -243,6 +244,56 @@ class KnowledgeArchiveWidget extends Widget_Base {
 		);
 
 		$this->add_control(
+			'show_note_count',
+			[
+				'label'     => __( 'Show Note Count', 'knowledge' ),
+				'type'      => Controls_Manager::SWITCHER,
+				'default'   => 'yes',
+			]
+		);
+
+		$this->add_control(
+			'note_count_position',
+			[
+				'label'     => __( 'Note Count Position', 'knowledge' ),
+				'type'      => Controls_Manager::SELECT,
+				'default'   => 'top_right',
+				'options'   => [
+					'top_left'  => __( 'Top Left', 'knowledge' ),
+					'top_right' => __( 'Top Right', 'knowledge' ),
+				],
+				'condition' => [
+					'show_note_count' => 'yes',
+				],
+			]
+		);
+
+		$this->add_control(
+			'note_count_icon',
+			[
+				'label'     => __( 'Show Icon', 'knowledge' ),
+				'type'      => Controls_Manager::SWITCHER,
+				'default'   => 'yes',
+				'condition' => [
+					'show_note_count' => 'yes',
+				],
+			]
+		);
+
+		$this->add_control(
+			'note_count_label',
+			[
+				'label'     => __( 'Label', 'knowledge' ),
+				'type'      => Controls_Manager::TEXT,
+				'default'   => '',
+				'placeholder' => __( 'e.g. Notes', 'knowledge' ),
+				'condition' => [
+					'show_note_count' => 'yes',
+				],
+			]
+		);
+
+		$this->add_control(
 			'show_badges',
 			[
 				'label'     => __( 'Show Badges (Tags)', 'knowledge' ),
@@ -330,6 +381,95 @@ class KnowledgeArchiveWidget extends Widget_Base {
 				'label_off' => __( 'Hide', 'knowledge' ),
 				'default'   => 'yes',
 				'description' => __( 'Display a "Re-check" button in the card hover state to request article update.', 'knowledge' ),
+			]
+		);
+
+		$this->end_controls_section();
+	}
+
+	protected function register_style_note_count_controls() {
+		$this->start_controls_section(
+			'section_style_note_count',
+			[
+				'label'     => __( 'Note Count', 'knowledge' ),
+				'tab'       => Controls_Manager::TAB_STYLE,
+				'condition' => [
+					'show_note_count' => 'yes',
+				],
+			]
+		);
+
+		$this->add_group_control(
+			Group_Control_Typography::get_type(),
+			[
+				'name'     => 'note_count_typography',
+				'selector' => '{{WRAPPER}} .knowledge-indicator-notes',
+			]
+		);
+
+		$this->add_control(
+			'note_count_color',
+			[
+				'label'     => __( 'Color', 'knowledge' ),
+				'type'      => Controls_Manager::COLOR,
+				'selectors' => [
+					'{{WRAPPER}} .knowledge-indicator-notes' => 'color: {{VALUE}}',
+				],
+			]
+		);
+
+		$this->add_control(
+			'note_count_bg_color',
+			[
+				'label'     => __( 'Background Color', 'knowledge' ),
+				'type'      => Controls_Manager::COLOR,
+				'selectors' => [
+					'{{WRAPPER}} .knowledge-indicator-notes' => 'background-color: {{VALUE}}',
+				],
+			]
+		);
+
+		$this->add_group_control(
+			Group_Control_Border::get_type(),
+			[
+				'name'     => 'note_count_border',
+				'selector' => '{{WRAPPER}} .knowledge-indicator-notes',
+			]
+		);
+
+		$this->add_control(
+			'note_count_border_radius',
+			[
+				'label'      => __( 'Border Radius', 'knowledge' ),
+				'type'       => Controls_Manager::DIMENSIONS,
+				'size_units' => [ 'px', '%', 'em' ],
+				'selectors'  => [
+					'{{WRAPPER}} .knowledge-indicator-notes' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+				],
+			]
+		);
+
+		$this->add_responsive_control(
+			'note_count_padding',
+			[
+				'label'      => __( 'Padding', 'knowledge' ),
+				'type'       => Controls_Manager::DIMENSIONS,
+				'size_units' => [ 'px', '%', 'em' ],
+				'selectors'  => [
+					'{{WRAPPER}} .knowledge-indicator-notes' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+				],
+			]
+		);
+
+		$this->add_responsive_control(
+			'note_count_margin',
+			[
+				'label'      => __( 'Margin', 'knowledge' ),
+				'type'       => Controls_Manager::DIMENSIONS,
+				'size_units' => [ 'px', '%', 'em' ],
+				'selectors'  => [
+					'{{WRAPPER}} .knowledge-indicator-notes' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+				],
 			]
 		);
 
@@ -1031,6 +1171,10 @@ class KnowledgeArchiveWidget extends Widget_Base {
 				'show_meta'         => 'yes' === $settings['show_meta'],
 				'show_avatar'       => 'yes' === $settings['show_avatar'],
 				'show_recheck_button' => 'yes' === $settings['show_recheck_button'],
+				'show_note_count'      => 'yes' === $settings['show_note_count'],
+				'note_count_position'  => $settings['note_count_position'],
+				'note_count_icon'      => 'yes' === $settings['note_count_icon'],
+				'note_count_label'     => $settings['note_count_label'],
 			];
 			
 			// Wrapper Attributes

@@ -13,7 +13,7 @@ class ChatService {
 		$this->store            = new VectorStore();
 	}
 
-	public function ask( string $question, string $mode = 'combined_prioritised' ): array {
+	public function ask( string $question, string $mode = 'combined_prioritised', ?int $project_id = null ): array {
 		// Embeddings always use primary provider
 		$source_uuids = [];
 		try {
@@ -28,20 +28,33 @@ class ChatService {
 					];
 				}
 
-				// 2. Retrieve Context
-				$results = $this->store->search( $query_vec, 3 ); // Top 3 chunks
-				
-				if ( empty( $results ) ) {
-					$context_text = "No specific context found in the knowledge base.";
-				} else {
-					$context_text = "Context:\n";
-					foreach ( $results as $r ) {
-						$context_text .= "---\n" . $r['text'] . "\n";
-						if ( ! empty( $r['version_uuid'] ) ) {
-							$source_uuids[] = $r['version_uuid'];
-						}
+				// 2. Prepare Project Scope (if active)
+				$allowed_uuids = [];
+				if ( $project_id ) {
+					$allowed_uuids = $this->get_project_version_uuids( $project_id );
+					if ( empty( $allowed_uuids ) ) {
+						// Project is empty, so no context can be found
+						$context_text = "No context found (Project is empty).";
 					}
-					$source_uuids = array_values( array_unique( $source_uuids ) );
+				}
+
+				// 3. Retrieve Context
+				// Only search if we don't have an empty restricted scope
+				if ( ! ($project_id && empty( $allowed_uuids )) ) {
+					$results = $this->store->search( $query_vec, 3, $allowed_uuids ); // Top 3 chunks
+					
+					if ( empty( $results ) ) {
+						$context_text = "No specific context found in the knowledge base.";
+					} else {
+						$context_text = "Context:\n";
+						foreach ( $results as $r ) {
+							$context_text .= "---\n" . $r['text'] . "\n";
+							if ( ! empty( $r['version_uuid'] ) ) {
+								$source_uuids[] = $r['version_uuid'];
+							}
+						}
+						$source_uuids = array_values( array_unique( $source_uuids ) );
+					}
 				}
 			}
 		} catch ( \Exception $e ) {
@@ -120,5 +133,26 @@ EOT;
 				'provenance' => []
 			];
 		}
+	}
+
+	private function get_project_version_uuids( int $project_id ): array {
+		$project_service = new \Knowledge\Service\Project\ProjectService();
+		$article_ids = $project_service->get_members_by_type( $project_id, 'kb_article' );
+
+		if ( empty( $article_ids ) ) {
+			return [];
+		}
+
+		global $wpdb;
+		$placeholders = implode( ',', array_fill( 0, count( $article_ids ), '%d' ) );
+		
+		// Get UUIDs of all versions belonging to these articles
+		$sql = "SELECT meta_value FROM $wpdb->postmeta 
+				JOIN $wpdb->posts ON $wpdb->posts.ID = $wpdb->postmeta.post_id
+				WHERE post_type = 'kb_version' 
+				AND post_parent IN ($placeholders)
+				AND meta_key = '_kb_version_uuid'";
+				
+		return $wpdb->get_col( $wpdb->prepare( $sql, $article_ids ) );
 	}
 }

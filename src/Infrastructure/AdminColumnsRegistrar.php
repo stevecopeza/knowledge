@@ -63,7 +63,8 @@ class AdminColumnsRegistrar {
 		$new_columns = [];
 		foreach ( $columns as $key => $title ) {
 			if ( $key === 'date' ) {
-				$new_columns['source_url'] = 'Source URL';
+				$new_columns['projects']      = 'Projects';
+				$new_columns['source_url']    = 'Source URL';
 				$new_columns['version_count'] = 'Versions';
 			}
 			$new_columns[ $key ] = $title;
@@ -73,6 +74,19 @@ class AdminColumnsRegistrar {
 
 	public function render_article_column( string $column, int $post_id ): void {
 		switch ( $column ) {
+			case 'projects':
+				$service = new \Knowledge\Service\Project\ProjectService();
+				$project_ids = $service->get_projects_for_object( $post_id );
+				if ( empty( $project_ids ) ) {
+					echo '—';
+				} else {
+					$names = [];
+					foreach ( $project_ids as $pid ) {
+						$names[] = '<a href="' . esc_url( get_edit_post_link( $pid ) ) . '">' . esc_html( get_the_title( $pid ) ) . '</a>';
+					}
+					echo implode( ', ', $names );
+				}
+				break;
 			case 'source_url':
 				$url = get_post_meta( $post_id, '_kb_source_url', true );
 				if ( $url ) {

@@ -13,6 +13,7 @@ class FilesystemInitializer {
 			$root . '/versions',
 			$root . '/forks',
 			$root . '/media',
+			$root . '/annotations',
 			$root . '/ai',
 			$root . '/imports',
 			$root . '/temp',

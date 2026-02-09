@@ -26,7 +26,7 @@ The grid of knowledge articles uses a responsive layout that adapts to touch con
         - A **1-second delay** is applied to the transition to prevent jarring "flashing" effects while scrolling quickly.
     - **Touch**: 
         - Metadata is hidden by default (showing the full image).
-        - Tapping the card triggers the hover state, revealing the white overlay, summary, and tags.
+        - Tapping the card triggers the hover state, revealing the white overlay, summary, tags, and action buttons.
     - **Implementation**:
       ```css
       /* Desktop: 1s Delay */
@@ -47,10 +47,10 @@ The grid of knowledge articles uses a responsive layout that adapts to touch con
       }
       ```
 
-- **Menu Buttons**:
-    - The "More Options" (three dots) button uses negative margins to increase the hit area without altering the visual layout.
-    - **Visual Size**: 24px x 24px
-    - **Touch Target**: 48px x 48px (via `padding: 12px` and `margin: -8px`)
+- **Interactive Elements**:
+    - **Hover Content**: Acts as the primary link to the article.
+    - **Re-check Button**: A secondary action button (`z-index: 25`) positioned above the hover content (`z-index: 20`). On touch devices, the first tap reveals the hover state (including this button), and a direct tap on the button triggers the re-check action instead of navigation.
+    - **Menu Buttons**: The "More Options" (three dots) button uses negative margins to increase the hit area.
 
 ### 2.2 Grid Layout
 - **Desktop**: 3 columns (standard).
@@ -91,3 +91,4 @@ Testing is performed against:
 1.  **Ingestion**: Can I paste a URL and click "Ingest" on a phone?
 2.  **Chat**: Can I type a query, send it, and read the response without zooming?
 3.  **Navigation**: Can I tap the "Edit" or "Fork" buttons on a card without accidentally opening the article?
+4.  **Re-check**: Can I tap a card to reveal the "Re-check" button and tap it successfully?

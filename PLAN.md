@@ -131,8 +131,8 @@ This document tracks the implementation progress of the Knowledge Plugin.
     - [x] Fix Model Dropdown Population (AJAX/UI)
     - [x] Enhance Connection Status Feedback (Visual Indicators)
     - [x] Bulk Categorization Backfill Logic
-- [ ] **Performance Tuning**
-    - [ ] Optimize Search Index for >10k items
+- [x] **Performance Tuning**
+    - [x] Optimize Search Index for >10k items
     - [ ] Transient Caching for External API Calls
 
 ## 🟢 Phase 8: UX & Robustness (Recent)
@@ -165,12 +165,80 @@ This document tracks the implementation progress of the Knowledge Plugin.
 **Goal:** Finalize documentation and prepare for v1.0 release.
 
 - [ ] **Documentation**
-    - [ ] Update Mobile/Touch design docs.
-    - [ ] Document Elementor Widget usage.
-    - [ ] Finalize Installation Guide.
+    - [x] Update Mobile/Touch design docs.
+    - [x] Document Elementor Widget usage.
+    - [x] Finalize Installation Guide.
 - [ ] **Release**
     - [ ] Bump version numbers.
     - [ ] Create release package.
+
+## ✅ Phase 10: Projects & Context
+**Goal:** Group knowledge into research contexts with distinct boundaries.
+
+- [x] **Project Logic**
+    - [x] `kb_project` Membership (Many-to-Many relation table `wp_kb_project_relationships`)
+    - [x] "Add to Project" Bulk Action in Article List
+    - [x] "Add to Project" Metabox in Article Editor
+- [x] **Project Dashboard**
+    - [x] Project Overview Page (List of members, Stats)
+    - [x] "Remove from Project" Action (Does NOT delete knowledge)
+- [x] **Scoped Intelligence**
+    - [x] Scoped Search (Search *within* a Project)
+    - [x] Project-specific AI Context (RAG retrieves from Project members only)
+
+## 🟢 Phase 11: Annotation Engine (Current)
+**Goal:** Enable active reading with highlights, margin notes, and synthesis.
+
+- [x] **Data Model**
+    - [x] `kb_note` CPT Registration (Private by default)
+    - [x] Annotation Storage Schema (JSON for selectors/anchors)
+- [x] **Frontend Interaction**
+    - [x] Text Selection API (Highlight text on frontend)
+    - [x] "Add Note" Popover (Fixed disappearing bug)
+    - [x] Sidebar/Margin View for Notes
+    - [x] "Note Mode" Dropdown (Highlight, Excerpt, Copy) with Preference Persistence
+    - [x] Sidebar Quote Styling (Italics for > prefixed text)
+    - [x] **Note Management**
+        - [x] Edit Note (User text only, preserves quotes)
+        - [x] Delete Note (Removes highlight)
+        - [x] **Tagging**
+            - [x] Live hashtag extraction from note content
+            - [x] Responsive search-as-you-type tag input
+            - [x] Source-aware tag removal
+    - [x] **Indicators**
+        - [x] Article Note Count Badge (Archive/Search views)
+        - [x] Cached count metadata for performance
+        - [x] **Elementor Controls**
+            - [x] Toggle Show/Hide
+            - [x] Position: Top Left / Top Right
+            - [x] Icon: Toggle On/Off
+            - [x] Label: Custom text input
+            - [x] Styling: Full control over Typography, Colors, Borders, Padding/Margin
+    - [x] **Navigation**
+        - [x] Article to Note (Click highlight -> Scroll sidebar)
+        - [x] Note to Article (Click note -> Scroll/Flash highlight)
+    - [x] **Access Control**
+        - [x] Restrict Notes/Annotations to logged-in users only
+        - [x] Restrict Re-check capability to logged-in users
+- [x] **Highlight Rendering**
+  - [x] Render existing highlights on page load (from JSON)
+  - [x] Contiguous Quote Styling (Blue line for multi-line excerpts)
+  - [ ] Handle text changes/fuzzy matching (Future)
+- [ ] **Search Integration**
+    - [ ] Index Notes in `wp_kb_search_index`
+- [ ] **Synthesis**
+    - [ ] "Convert Note to Article" Workflow
+    - [ ] "Promote to Project" Action
+
+## 🟡 Phase 12: Collaboration (New)
+**Goal:** Allow asynchronous, artifact-based sharing.
+
+- [ ] **Sharing Model**
+    - [ ] Project Invitation System (WP Users)
+    - [ ] Shared vs. Private Notes Visibility
+- [ ] **Activity**
+    - [ ] Activity Feed (Async updates on watched items)
+    - [ ] "New in Project" Notifications
 
 ---
 **Legend:**

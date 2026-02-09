@@ -33,6 +33,18 @@ class Plugin {
 		$admin_columns = new AdminColumnsRegistrar();
 		$admin_columns->init();
 
+		// Initialize Project Admin UI
+		$project_admin = new ProjectAdminRegistrar();
+		$project_admin->init();
+
+		// Initialize Annotation Handler
+		$annotation_registrar = new AnnotationRegistrar();
+		$annotation_registrar->init();
+
+		// Initialize Note Count Service
+		$note_count_service = new \Knowledge\Service\Annotation\NoteCountService();
+		$note_count_service->init();
+
 		// Initialize Version Viewer
 		$version_viewer = new VersionViewer();
 		$version_viewer->init();

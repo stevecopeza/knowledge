@@ -17,29 +17,29 @@ They are:
 
 ## 2. Anchoring Model
 
-Each Highlight is anchored using a **dual-anchor strategy**:
+Each Highlight is anchored using a **dual-anchor strategy** (Target):
 
-- Quoted text (exact excerpt)
-- Positional offsets (start/end)
+- **MVP (v1.0)**: Quoted text (`TextQuoteSelector` with `exact` match).
+- **Planned**: Positional offsets (start/end) and Context (prefix/suffix).
 
-Both anchors are stored.
+Currently, `exact` text matching is authoritative.
 
 ---
 
 ## 3. Robustness Rules
 
 - Rendering changes must not invalidate Highlights
-- Minor whitespace or markup changes are tolerated
+- Minor whitespace or markup changes are tolerated (Future)
 - If offsets drift, quoted text is authoritative
 
 ---
 
 ## 4. Failure Handling
 
-If a Highlight cannot be reliably resolved:
-- It is marked **Degraded**
-- The original quoted text is preserved
-- User is notified
+If a Highlight cannot be reliably resolved (e.g. text changed):
+- It is marked **Degraded** (not rendered)
+- The original quoted text is preserved in the Note
+- User is notified (Future)
 
 No automatic reattachment occurs.
 

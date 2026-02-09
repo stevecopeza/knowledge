@@ -14,6 +14,7 @@ class CptRegistrar {
 		$this->register_version();
 		$this->register_fork();
 		$this->register_project();
+		$this->register_note();
 		$this->register_import_job();
 	}
 
@@ -85,6 +86,24 @@ class CptRegistrar {
 		] );
 	}
 
+	private function register_note(): void {
+		register_post_type( 'kb_note', [
+			'labels'       => [
+				'name'          => 'Notes',
+				'singular_name' => 'Note',
+				'add_new'       => 'Add New',
+				'add_new_item'  => 'Add New Note',
+				'edit_item'     => 'Edit Note',
+			],
+			'public'       => false,
+			'show_ui'      => true,
+			'show_in_menu' => 'knowledge-main',
+			'menu_icon'    => 'dashicons-sticky',
+			'supports'     => [ 'title', 'editor', 'author' ],
+			'show_in_rest' => true,
+		] );
+	}
+
 	private function register_import_job(): void {
 		register_post_type( 'kb_import_job', [
 			'labels'       => [
@@ -115,7 +134,7 @@ class CptRegistrar {
 	}
 
 	private function register_tag(): void {
-		register_taxonomy( 'kb_tag', [ 'kb_article' ], [
+		register_taxonomy( 'kb_tag', [ 'kb_article', 'kb_note' ], [
 			'labels'            => [
 				'name'          => 'Knowledge Tags',
 				'singular_name' => 'Tag',

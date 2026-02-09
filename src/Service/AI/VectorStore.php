@@ -29,13 +29,22 @@ class VectorStore {
 	 *
 	 * @param array $query_vector The embedding of the query.
 	 * @param int   $limit        Number of results to return.
+	 * @param array $allowed_uuids Optional list of Version UUIDs to restrict search to.
 	 * @return array List of matches ['text' => ..., 'score' => ..., 'source_uuid' => ...]
 	 */
-	public function search( array $query_vector, int $limit = 5 ): array {
+	public function search( array $query_vector, int $limit = 5, array $allowed_uuids = [] ): array {
 		$files = glob( $this->storage_dir . '/*.json' );
 		$scores = [];
 
 		foreach ( $files as $file ) {
+			// Optimization: Check filename (UUID) before reading content if filtering
+			if ( ! empty( $allowed_uuids ) ) {
+				$filename = basename( $file, '.json' );
+				if ( ! in_array( $filename, $allowed_uuids, true ) ) {
+					continue;
+				}
+			}
+
 			$data = json_decode( file_get_contents( $file ), true );
 			if ( ! isset( $data['chunks'] ) ) {
 				continue;
