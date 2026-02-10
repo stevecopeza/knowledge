@@ -135,6 +135,18 @@ This document tracks the implementation progress of the Knowledge Plugin.
     - [x] Optimize Search Index for >10k items
     - [ ] Transient Caching for External API Calls
 
+## ✅ Phase 7.5: Data Integrity & Deduplication (Priority)
+**Goal:** Eliminate duplicates and prevent future occurrences via robust locking and canonicalization.
+
+- [x] **Deduplication Hardening**
+    - [x] **Canonical Resolution**: Resolve redirects (e.g., `flip.it`) to final URL before ingestion checks.
+    - [x] **Global Hash Check**: Check content hash against *all* versions in DB, not just local article history.
+    - [x] **Concurrency Locking**: Implement atomic locks (transients/DB) to prevent race conditions during parallel ingestion.
+- [x] **Data Cleanup**
+    - [x] **Merge Script**: Automate merging of identified race-condition duplicates (Same URL, Same Time).
+    - [x] **Content Deduplication**: Process to identify and merge redirect duplicates (Different URL, Same Content).
+    - [ ] **Reporting**: UI/CLI tool to list potential "Near Duplicates" for manual review.
+
 ## 🟢 Phase 8: UX & Robustness (Recent)
 **Goal:** Polish the user experience and improve handling of edge cases.
 

@@ -1,5 +1,7 @@
 # Ingestion — Deduplication Rules
 
+> **⚠️ STATUS UPDATE (2026-02-10):** The strategies defined below are currently being hardened. An audit revealed gaps in redirect resolution and concurrency locking. See [Deduplication Strategy Update](../../docs/10_operations/10_operations_07_deduplication_strategy_update.md) for the active remediation plan.
+
 This document defines how duplicate content is detected and handled during ingestion. Deduplication is conservative and applies only to **source content**, never to user-derived forks.
 
 ---

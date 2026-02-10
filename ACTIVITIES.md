@@ -26,6 +26,12 @@
     - [x] **Formatting**: Improved excerpt rendering with contiguous blue line and robust whitespace handling.
     - [x] **Metadata**: Added Author Name, Avatar, and Time to Note display.
     - [x] **Security**: Restricted Note creation/viewing and Article Re-check features to logged-in users.
+- **Data Integrity & Deduplication (Phase 7.5)**
+    - [x] **Concurrency Locking**: Implemented transient-based atomic locking (60s) to prevent race conditions during parallel ingestion of the same URL.
+    - [x] **Global Hash Check**: Implemented global content hash verification (Layer 2) to detect and link "Near Duplicates" (same content, different URL) to existing articles.
+    - [x] **Canonical Resolution**: Implemented HTTP HEAD/GET based canonical URL resolution (Layer 1) to normalize redirects (e.g., `flip.it`) before ingestion.
+    - [x] **Data Cleanup**: Created and ran `merge_duplicates.php` to consolidate 7 sets of duplicate articles/versions caused by race conditions.
+    - [x] **Documentation**: Updated deduplication strategy docs and plan.
 - **Documentation & Release Prep**
     - [x] **Installation Guide**: Finalized comprehensive guide including prerequisites, manual/dev installation, first-run initialization, and troubleshooting.
     - [x] **Mobile/Touch Design**: Updated documentation to reflect "Touch-First" philosophy, interaction delays, and specific mobile behaviors (tap-to-reveal).

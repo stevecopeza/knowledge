@@ -3,7 +3,7 @@
  * Plugin Name: Knowledge
  * Plugin URI:  https://github.com/stevecopeza/knowledge
  * Description: A local-first, ownership-first knowledge repository designed for epistemic durability.
- * Version:     0.1.0
+ * Version:     0.1.1
  * Author:      Steve Cope
  * Author URI:  https://cope.zone
  * Text Domain: knowledge

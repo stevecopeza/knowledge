@@ -21,6 +21,14 @@ class StorageEngine {
 				return $existing_version;
 			}
 		} else {
+			// 1.5 Global Content Check (Layer 2)
+			// Check if this content exists ANYWHERE in the system (Deduplication)
+			$global_version = $this->find_global_identical_version( $hash );
+			if ( $global_version ) {
+				error_log( "StorageEngine: Global content match found. Skipping creation of new article for source " . $source->get_url() . ". Reusing Article " . $global_version->get_article_id() );
+				return $global_version;
+			}
+
 			// Create New Article
 			$article_id = $this->create_article( $title, $source, $author_id );
 		}
@@ -147,18 +155,44 @@ class StorageEngine {
 			'meta_key'       => '_kb_content_hash',
 			'meta_value'     => $hash,
 			'posts_per_page' => 1,
+			'fields'         => 'ids',
 		] );
 
 		if ( empty( $query->posts ) ) {
 			return null;
 		}
 
-		$post_id = $query->posts[0]->ID;
-		$uuid    = get_post_meta( $post_id, '_kb_version_uuid', true );
-		$url     = get_post_meta( $post_id, '_kb_source_url', true );
-		$rel_path = get_post_meta( $post_id, '_kb_file_path', true );
-		$path    = KNOWLEDGE_DATA_PATH . '/versions/' . $rel_path;
-		$title   = get_the_title( $article_id ); // Use Article title
+		return $this->get_version_by_id( $query->posts[0] );
+	}
+
+	private function find_global_identical_version( string $hash ): ?Version {
+		$query = new \WP_Query( [
+			'post_type'      => 'kb_version',
+			'meta_key'       => '_kb_content_hash',
+			'meta_value'     => $hash,
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+			'update_post_term_cache' => false,
+			'update_post_meta_cache' => false,
+		] );
+
+		if ( empty( $query->posts ) ) {
+			return null;
+		}
+
+		return $this->get_version_by_id( $query->posts[0] );
+	}
+
+	private function get_version_by_id( int $version_id ): Version {
+		$uuid       = get_post_meta( $version_id, '_kb_version_uuid', true );
+		$url        = get_post_meta( $version_id, '_kb_source_url', true );
+		$rel_path   = get_post_meta( $version_id, '_kb_file_path', true );
+		$hash       = get_post_meta( $version_id, '_kb_content_hash', true );
+		
+		$article_id = wp_get_post_parent_id( $version_id );
+		$path       = KNOWLEDGE_DATA_PATH . '/versions/' . $rel_path;
+		$title      = get_the_title( $article_id );
 
 		return new Version(
 			$uuid,
